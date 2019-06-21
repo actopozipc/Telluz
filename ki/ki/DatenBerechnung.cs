@@ -29,11 +29,14 @@ namespace ki
             l.ListeMitKategorienMitJahrenUndWerten = GetCategoriesWithValuesAndYears(); //Werte mit Jahren
             kategoriencount = l.ListeMitKategorienMitJahrenUndWerten.Count;
             List<KategorieMitJahrenUndWerten> KategorienMitZukünftigenWerten = new List<KategorieMitJahrenUndWerten>();
+            Task<List<JahrMitWert>>[] liste = new Task<List<JahrMitWert>>[kategoriencount];
 
             //Arbeite jede Kategorie parallel ab
-            Parallel.For(0, kategoriencount, i =>
+            for (int i = 0; i < kategoriencount; i++)
             {
 
+            
+           
                     //Erstelle für jede Kategorie einen Liste mit eigenen Datensätzen
                     List<JahrMitWert> einzelnerdatensatz = new List<JahrMitWert>();
 
@@ -51,14 +54,29 @@ namespace ki
                         //Bearbeite eigenen Datensatz
 
                         int multi = WertNormieren(einzelnerdatensatz);
-                    lock (KategorienMitZukünftigenWerten)
-                    {
-                        KategorienMitZukünftigenWerten.Add(new KategorieMitJahrenUndWerten(l.ListeMitKategorienMitJahrenUndWerten[i].description, Trainieren(einzelnerdatensatz, 2019, multi)));
-                    }
+
+                 
+
+                  liste[i] = Task<List<JahrMitWert>>.Run(() =>
+                      {
+                         return Trainieren(einzelnerdatensatz, 2019, multi);
+                      });
+                   
+                    //lock (KategorienMitZukünftigenWerten)
+                    //{
+                    //    KategorienMitZukünftigenWerten.Add(new KategorieMitJahrenUndWerten(l.ListeMitKategorienMitJahrenUndWerten[i].description, Trainieren(einzelnerdatensatz, 2019, multi)));
+                    //}
 
 
                 }
-            });
+            }
+            Task.WaitAll(liste);
+            for (int i = 0; i < kategoriencount; i++)
+            {
+                KategorienMitZukünftigenWerten.Add(new KategorieMitJahrenUndWerten(l.ListeMitKategorienMitJahrenUndWerten[i].description, liste[i].Result));
+            }
+             
+            
 
             return KategorienMitZukünftigenWerten;
 

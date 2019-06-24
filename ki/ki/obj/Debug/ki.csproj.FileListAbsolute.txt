@@ -24,3 +24,16 @@ C:\Users\Windowsfus\Downloads\ki\ki\ki\obj\Debug\ki.csproj.CoreCompileInputs.cac
 C:\Users\Windowsfus\Downloads\ki\ki\ki\obj\Debug\ki.csproj.CopyComplete
 C:\Users\Windowsfus\Downloads\ki\ki\ki\obj\Debug\ki.exe
 C:\Users\Windowsfus\Downloads\ki\ki\ki\obj\Debug\ki.pdb
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\bin\Debug\ki.exe.config
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\bin\Debug\ki.exe
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\bin\Debug\ki.pdb
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\bin\Debug\BouncyCastle.Crypto.dll
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\bin\Debug\Google.Protobuf.dll
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\bin\Debug\MySql.Data.dll
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\bin\Debug\Google.Protobuf.xml
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\bin\Debug\MySql.Data.xml
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\obj\Debug\ki.csprojAssemblyReference.cache
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\obj\Debug\ki.csproj.CoreCompileInputs.cache
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\obj\Debug\ki.csproj.CopyComplete
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\obj\Debug\ki.exe
+C:\Users\paralysat\Downloads\fus-KI--master\fus-KI--master\ki\ki\obj\Debug\ki.pdb

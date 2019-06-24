@@ -35,39 +35,35 @@ namespace ki
             for (int i = 0; i < kategoriencount; i++)
             {
 
-            
-           
-                    //Erstelle für jede Kategorie einen Liste mit eigenen Datensätzen
-                    List<JahrMitWert> einzelnerdatensatz = new List<JahrMitWert>();
-
-                    //Hole einzelne Datensätze für jedes Jahr heraus
-                    foreach (var JahrMitWert in l.ListeMitKategorienMitJahrenUndWerten[i].JahreMitWerten)
+                //Erstelle für jede Kategorie einen Liste mit eigenen Datensätzen
+                List<JahrMitWert> einzelnerdatensatz = new List<JahrMitWert>();
+               
+                //Hole einzelne Datensätze für jedes Jahr heraus
+                foreach (var JahrMitWert in l.ListeMitKategorienMitJahrenUndWerten[i].JahreMitWerten)
                 {
+                    
                     einzelnerdatensatz.Add(JahrMitWert);
                 }
-                    //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
-                    einzelnerdatensatz = EntferneNull(einzelnerdatensatz);
-                    //Wenn es mindestens ein Jahr einer Kategorie gibt, in der der Wert nicht 0 ist
-                    if (einzelnerdatensatz.Count > 1)
+                //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
+                einzelnerdatensatz = EntferneNull(einzelnerdatensatz);
+                //Wenn es mindestens ein Jahr einer Kategorie gibt, in der der Wert nicht 0 ist
+                if (einzelnerdatensatz.Count > 1)
                 {
 
-                        //Bearbeite eigenen Datensatz
+                    //Bearbeite eigenen Datensatz
+                    int multi = WertNormieren(einzelnerdatensatz);
+                    liste[i] = Task<List<JahrMitWert>>.Run(() =>
+                        {
 
-                        int multi = WertNormieren(einzelnerdatensatz);
+                            
+                            return Trainieren(einzelnerdatensatz, 2019, multi);
 
-                 
+                        });
 
-                  liste[i] = Task<List<JahrMitWert>>.Run(() =>
-                      {
-                         return Trainieren(einzelnerdatensatz, 2019, multi);
-                      });
-                   
-                    //lock (KategorienMitZukünftigenWerten)
-                    //{
-                    //    KategorienMitZukünftigenWerten.Add(new KategorieMitJahrenUndWerten(l.ListeMitKategorienMitJahrenUndWerten[i].description, Trainieren(einzelnerdatensatz, 2019, multi)));
-                    //}
-
-
+                }
+                else
+                {
+                    liste[i] = Task.Run(() => { return new List<JahrMitWert>(); });
                 }
             }
             Task.WaitAll(liste);
@@ -75,8 +71,6 @@ namespace ki
             {
                 KategorienMitZukünftigenWerten.Add(new KategorieMitJahrenUndWerten(l.ListeMitKategorienMitJahrenUndWerten[i].description, liste[i].Result));
             }
-             
-            
 
             return KategorienMitZukünftigenWerten;
 
@@ -92,15 +86,15 @@ namespace ki
                 inputs.Add(Convert.ToDouble(item.year / jm));
                 outputs.Add(Convert.ToDouble(item.value) / (Math.Pow(10, multi)));
             }
-         
-           
-        // creating the neurons
-    
+
+
+            // creating the neurons
+
             Neuron hiddenNeuron1 = new Neuron();
             Neuron outputNeuron = new Neuron();
             hiddenNeuron1.randomizeWeights();
             outputNeuron.randomizeWeights();
-   
+
             List<JahrMitWert> zukunft = new List<JahrMitWert>();
             for (int i = 0; i < outputs.Count; i++)
             {
@@ -111,7 +105,7 @@ namespace ki
             while (lernvorgang < 3000)
             {
 
-                for (int i = 0; i <z; i++)
+                for (int i = 0; i < z; i++)
                 {
                     hiddenNeuron1.inputs = new double[] { inputs[i] };
                     outputNeuron.inputs = new double[] { hiddenNeuron1.output };
@@ -129,20 +123,20 @@ namespace ki
 
             if (j < ZukunftsJahr)
             {
-                    double i = ++j / jm;
-                    inputs.Add(i);
-                    hiddenNeuron1.inputs = new double[] {Convert.ToDouble( i)};
-                    outputNeuron.inputs = new double[] { hiddenNeuron1.output };
-                    outputs.Add(outputNeuron.output);
-                    zukunft.Add(new JahrMitWert(i, Convert.ToDecimal(outputNeuron.output)));
+                double i = ++j / jm;
+                inputs.Add(i);
+                hiddenNeuron1.inputs = new double[] { Convert.ToDouble(i) };
+                outputNeuron.inputs = new double[] { hiddenNeuron1.output };
+                outputs.Add(outputNeuron.output);
+                zukunft.Add(new JahrMitWert(i, Convert.ToDecimal(outputNeuron.output)));
             }
             //Normiere Werte
-            for (int i = 0; i < zukunft.Count; i++)
+            for (int i = 0; i < outputs.Count; i++)
             {
-                zukunft[i].value = Convert.ToDecimal(zukunft[i].value * Convert.ToDecimal(Math.Pow(10, multi)));
+                zukunft[i].value = Convert.ToDecimal(outputs[i] * Convert.ToDouble(Math.Pow(10, multi)));
                 zukunft[i].year = zukunft[i].year * jm;
             }
-            if (j<ZukunftsJahr)
+            if (j < ZukunftsJahr)
             {
                 return Trainieren(zukunft, ZukunftsJahr, multi);
             }
@@ -150,8 +144,6 @@ namespace ki
             {
                 return zukunft;
             }
-          
-    
 
         }
         int WertNormieren(List<JahrMitWert> n)

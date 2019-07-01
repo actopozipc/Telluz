@@ -4,15 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using kiding;
 namespace ki
 {
     class CalculateData
     {
         static MySqlConnection connection = null;
         int categorycount;
-        const double divident = 10000;
-        const int x = 3000;
+        const double divident = 1000;
+        const int x = 9000;
         public CalculateData()
         {
             string cs = ConnectionString();
@@ -40,7 +39,7 @@ namespace ki
                 foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                 {
                     
-                    SingleCategoryData.Add(YearWithValue);
+                    SingleCategoryData.Add(new YearWithValue(YearWithValue.year, YearWithValue.value, countrystats.ListWithCategoriesWithYearsAndValues[i].category));
                 }
                 //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
                 //entferne deswegen 0
@@ -50,11 +49,11 @@ namespace ki
                 {
 
                     //Bearbeite eigenen Datensatz
-                    int multi = Scale(SingleCategoryData); //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
+                    int multi = Scale(SingleCategoryData) -1; //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
                     //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
                     liste[i] = Task<List<YearWithValue>>.Run(() =>
                         {
-                            return Train(SingleCategoryData, 2019, multi);
+                            return Train(SingleCategoryData, 2030, multi);
                         });
 
                 }
@@ -93,9 +92,6 @@ namespace ki
                 inputs.Add(Convert.ToDouble(YearWithValue.year / divident));
                 outputs.Add(Convert.ToDouble(YearWithValue.value) / (Math.Pow(10, multi)));
             }
-           
-
-            // creating the neurons
 
             Neuron hiddenNeuron1 = new Neuron();
             Neuron outputNeuron = new Neuron();
@@ -117,8 +113,9 @@ namespace ki
                     outputNeuron.adjustWeights();
                     hiddenNeuron1.error = sigmoid.derived(hiddenNeuron1.output) * outputNeuron.error * outputNeuron.weights;
                     hiddenNeuron1.adjustWeights();
+                   
                 }
-
+            
                 lernvorgang++;
             }
 
@@ -132,7 +129,7 @@ namespace ki
             {
                 hiddenNeuron1.inputs = inputs[inputs.Count - 1]+ 1 / divident;
                 outputNeuron.inputs = hiddenNeuron1.output;
-                KnownValues.Add(new YearWithValue(((inputs[inputs.Count-1]+ 1 / divident) * divident), Convert.ToDecimal(outputNeuron.output * Convert.ToDouble(Math.Pow(10,multi)))));
+                KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count-1]+ (1 / divident)) * divident)), Convert.ToDecimal(outputNeuron.output * Convert.ToDouble(Math.Pow(10,multi)))));
                 return Train(KnownValues, FutureYear, multi);
             }
             //wenn alle Jahre bekannt sind, returne die Liste

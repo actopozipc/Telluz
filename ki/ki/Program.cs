@@ -13,8 +13,8 @@ namespace ki
         static void Main(string[] args)
         {
             Console.Title = "GreenVision"; //wir brauchen einen besseren namen
-            CalculateData caöc = new CalculateData();
-            foreach (var item in caöc.Generate())
+            CalculateData calc = new CalculateData();
+            foreach (var item in calc.Generate())
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine(item.category);

@@ -19,7 +19,7 @@ namespace ki
 
         public static double derived(double x)
         {
-            return x * (1.0 - x);
+            return output(x) * (1 - output(x));
         }
     }
 }

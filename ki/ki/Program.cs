@@ -12,14 +12,14 @@ namespace ki
      
         static void Main(string[] args)
         {
-            Console.Title = "GreenVision";
-            DatenBerechnung DB = new DatenBerechnung();
-            foreach (var item in DB.GeneriereVorhersage())
+            Console.Title = "GreenVision"; //wir brauchen einen besseren namen
+            CalculateData caöc = new CalculateData();
+            foreach (var item in caöc.Generate())
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine(item.description);
+                Console.WriteLine(item.category);
                 Console.ForegroundColor = ConsoleColor.White;
-                foreach (var it in item.JahreMitWerten)
+                foreach (var it in item.YearsWithValues)
                 {
                     Console.WriteLine($"{it.year} : {it.value}");
                 }

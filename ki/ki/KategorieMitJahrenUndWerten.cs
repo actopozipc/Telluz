@@ -6,22 +6,22 @@ using System.Threading.Tasks;
 
 namespace ki
 {
-    class KategorieMitJahrenUndWerten
+    class CategoriesWithYearsAndValues
     {
-        public string description { get; set; }
-        public List<JahrMitWert> JahreMitWerten { get; set; }
-        public KategorieMitJahrenUndWerten(string d, List<JahrMitWert> J)
+        public string category { get; set; } //name der kategorie
+        public List<YearWithValue> YearsWithValues { get; set; } //Liste mit Jahr + Value
+        public CategoriesWithYearsAndValues(string category, List<YearWithValue> YearsWithValues)
         {
-            description = d;
-            JahreMitWerten = J;
+            this.category = category;
+            this.YearsWithValues = YearsWithValues;
         }
-        public KategorieMitJahrenUndWerten(string d, Task<List<JahrMitWert>> J)
+        public CategoriesWithYearsAndValues(string category, Task<List<YearWithValue>> YearsWithValuesTask)
         {
-            description = d;
-            JahreMitWerten = J.Result;
+            this.category = category;
+            YearsWithValues = YearsWithValuesTask.Result;
         }
         //Konstruktor nicht löschen
-        public KategorieMitJahrenUndWerten()
+        public CategoriesWithYearsAndValues()
         {
 
         }

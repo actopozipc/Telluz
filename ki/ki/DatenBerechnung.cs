@@ -4,89 +4,96 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using kiding;
 namespace ki
 {
-    class DatenBerechnung
+    class CalculateData
     {
-        static MySqlConnection conn = null;
-        int kategoriencount;
-        const double jm = 10000;
-        public DatenBerechnung()
+        static MySqlConnection connection = null;
+        int categorycount;
+        const double divident = 10000;
+        const int x = 3000;
+        public CalculateData()
         {
             string cs = ConnectionString();
-            conn = new MySqlConnection(cs);
-            conn.Open();
+            connection = new MySqlConnection(cs);
+            connection.Open();
         }
-        public void OnGet()
+        public List<CategoriesWithYearsAndValues> Generate()
         {
-
-        }
-        public List<KategorieMitJahrenUndWerten> GeneriereVorhersage()
-        {
-            Landesstatistik l = new Landesstatistik(); //Klasse für alle Kategorien und deren Werte per Jahr
-            l.country = "Austria"; //Land zu dem die Kategorien mit Werte gehören
-            l.ListeMitKategorienMitJahrenUndWerten = GetCategoriesWithValuesAndYears(); //Werte mit Jahren
-            kategoriencount = l.ListeMitKategorienMitJahrenUndWerten.Count;
-            List<KategorieMitJahrenUndWerten> KategorienMitZukünftigenWerten = new List<KategorieMitJahrenUndWerten>();
-            Task<List<JahrMitWert>>[] liste = new Task<List<JahrMitWert>>[kategoriencount];
+            Countrystats countrystats = new Countrystats(); //Klasse für alle Kategorien und deren Werte per Jahr
+            countrystats.country = "Austria"; //Land zu dem die Kategorien mit Werte gehören
+            //in der Datenbank sind derzeit nur Werte für Österreich drin
+            countrystats.ListWithCategoriesWithYearsAndValues = GetCategoriesWithValuesAndYears(); //Werte mit Jahren
+            categorycount = countrystats.ListWithCategoriesWithYearsAndValues.Count; //wie viele kategorien an daten für dieses land existieren
+            List<CategoriesWithYearsAndValues> CategorysWithFutureValues = new List<CategoriesWithYearsAndValues>();
+            Task<List<YearWithValue>>[] liste = new Task<List<YearWithValue>>[categorycount]; //liste damit jede kategorie in einem task abgearbeitet werden kann
 
             //Arbeite jede Kategorie parallel ab
-            for (int i = 0; i < kategoriencount; i++)
+            for (int i = 0; i < categorycount; i++)
             {
 
                 //Erstelle für jede Kategorie einen Liste mit eigenen Datensätzen
-                List<JahrMitWert> einzelnerdatensatz = new List<JahrMitWert>();
+                List<YearWithValue> SingleCategoryData = new List<YearWithValue>();
                
                 //Hole einzelne Datensätze für jedes Jahr heraus
-                foreach (var JahrMitWert in l.ListeMitKategorienMitJahrenUndWerten[i].JahreMitWerten)
+                foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                 {
                     
-                    einzelnerdatensatz.Add(JahrMitWert);
+                    SingleCategoryData.Add(YearWithValue);
                 }
                 //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
-                einzelnerdatensatz = EntferneNull(einzelnerdatensatz);
+                //entferne deswegen 0
+                SingleCategoryData = RemoveZero(SingleCategoryData);
                 //Wenn es mindestens ein Jahr einer Kategorie gibt, in der der Wert nicht 0 ist
-                if (einzelnerdatensatz.Count > 1)
+                if (SingleCategoryData.Count > 1)
                 {
 
                     //Bearbeite eigenen Datensatz
-                    int multi = WertNormieren(einzelnerdatensatz);
-                    liste[i] = Task<List<JahrMitWert>>.Run(() =>
+                    int multi = Scale(SingleCategoryData); //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
+                    //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
+                    liste[i] = Task<List<YearWithValue>>.Run(() =>
                         {
-
-                            
-                            return Trainieren(einzelnerdatensatz, 2019, multi);
-
+                            return Train(SingleCategoryData, 2019, multi);
                         });
 
                 }
+                //ohne dieses else gebe es einige leere Tasks im Array -> Exception
+                //ohne if geht die KI datensätze ohne einträge durch -> Verschwendung von Rechenleistung und Zeit
                 else
                 {
-                    liste[i] = Task.Run(() => { return new List<JahrMitWert>(); });
+                    liste[i] = Task.Run(() => { return new List<YearWithValue>(); });
                 }
             }
+            //Warte parallel bis alle Kategorien gelernt und berechnet wurden
             Task.WaitAll(liste);
-            for (int i = 0; i < kategoriencount; i++)
+            //returne alle Kategorien 
+            for (int i = 0; i < categorycount; i++)
             {
-                KategorienMitZukünftigenWerten.Add(new KategorieMitJahrenUndWerten(l.ListeMitKategorienMitJahrenUndWerten[i].description, liste[i].Result));
+                CategorysWithFutureValues.Add(new CategoriesWithYearsAndValues(countrystats.ListWithCategoriesWithYearsAndValues[i].category, liste[i].Result));
             }
 
-            return KategorienMitZukünftigenWerten;
+            return CategorysWithFutureValues;
 
         }
-        //Sieht anhand einer Liste mit Jahren und Zahlen den Wert für Jahr Ziel voraus
-        private List<JahrMitWert> Trainieren(List<JahrMitWert> d, int ZukunftsJahr, int multi)
+        /// <summary>
+        /// Sieht anhand einer Liste mit Jahren und Zahlen den Wert für Jahr Ziel voraus
+        /// </summary>
+        /// <param name="KnownValues">Liste bekannter Werte anhand deren die KI lernt</param>
+        /// <param name="FutureYear"> Bis zu welchem Jahr die KI werte vorhersagen soll</param>
+        /// <param name="multi">Wie viel man normierte Werte mulitplizieren muss</param>
+        /// <returns>Liste mit allen bereits bekannten Werten + Vorhersagen für zukünftige Werte</returns>
+        private List<YearWithValue> Train(List<YearWithValue> KnownValues, int FutureYear, int multi)
         {
-            List<double> inputs = new List<double>();
-            List<double> outputs = new List<double>();
-
-            foreach (var item in d)
+            List<double> inputs = new List<double>(); //Jahre
+            List<double> outputs = new List<double>(); //Werte 
+            //Für jedes Jahr mit Wert in der Liste mit Jahren und Werten d
+            foreach (var YearWithValue in KnownValues)
             {
-                inputs.Add(Convert.ToDouble(item.year / jm));
-                outputs.Add(Convert.ToDouble(item.value) / (Math.Pow(10, multi)));
+                inputs.Add(Convert.ToDouble(YearWithValue.year / divident));
+                outputs.Add(Convert.ToDouble(YearWithValue.value) / (Math.Pow(10, multi)));
             }
-
+           
 
             // creating the neurons
 
@@ -95,69 +102,50 @@ namespace ki
             hiddenNeuron1.randomizeWeights();
             outputNeuron.randomizeWeights();
 
-            List<JahrMitWert> zukunft = new List<JahrMitWert>();
-            for (int i = 0; i < outputs.Count; i++)
-            {
-                zukunft.Add(new JahrMitWert(Convert.ToDouble(inputs[i]), Convert.ToDecimal(outputs[i])));
-            }
+            
             int lernvorgang = 0;
-            int z = inputs.Count;
-            while (lernvorgang < 3000)
+            int z = KnownValues.Count;
+            //Trainiere alle bekannten Werte x mal
+            while (lernvorgang < x)
             {
-
+               
                 for (int i = 0; i < z; i++)
                 {
-                    hiddenNeuron1.inputs = new double[] { inputs[i] };
-                    outputNeuron.inputs = new double[] { hiddenNeuron1.output };
-                    outputNeuron.error = sigmoid.abgeleitet(outputNeuron.output) * (Convert.ToDouble(outputs[i]) - outputNeuron.output);
+                    hiddenNeuron1.inputs = inputs[i];
+                    outputNeuron.inputs = hiddenNeuron1.output;
+                    outputNeuron.error = sigmoid.derived(outputNeuron.output) * (outputs[i] - outputNeuron.output);
                     outputNeuron.adjustWeights();
-                    hiddenNeuron1.error = sigmoid.abgeleitet(hiddenNeuron1.output) * outputNeuron.error * outputNeuron.weights[0];
+                    hiddenNeuron1.error = sigmoid.derived(hiddenNeuron1.output) * outputNeuron.error * outputNeuron.weights;
                     hiddenNeuron1.adjustWeights();
                 }
+
                 lernvorgang++;
-
             }
+
             //bekomme immer das höchste jahr
-            double j = Convert.ToDouble(inputs[inputs.Count - 1]) * jm;
+            double j = KnownValues.Max(i => i.year);
 
-
-            if (j < ZukunftsJahr)
+            //wenn das höchste bekannte jahr kleiner ist als das Jahr, bis zu dem wir die Werte wissen wollen, 
+            //dann füge das nächste Jahr als input ins Neuron, bekomme den Output und füge es in die Liste mit allen Werten ein
+            //Dann Rekursion bis das größte Jahr nicht mehr kleiner ist als das Jahr bis zu dem wir rechnen wollen
+            if (j < FutureYear)
             {
-                double i = ++j / jm;
-                inputs.Add(i);
-                hiddenNeuron1.inputs = new double[] { Convert.ToDouble(i) };
-                outputNeuron.inputs = new double[] { hiddenNeuron1.output };
-                outputs.Add(outputNeuron.output);
-                zukunft.Add(new JahrMitWert(i, Convert.ToDecimal(outputNeuron.output)));
+                hiddenNeuron1.inputs = inputs[inputs.Count - 1]+ 1 / divident;
+                outputNeuron.inputs = hiddenNeuron1.output;
+                KnownValues.Add(new YearWithValue(((inputs[inputs.Count-1]+ 1 / divident) * divident), Convert.ToDecimal(outputNeuron.output * Convert.ToDouble(Math.Pow(10,multi)))));
+                return Train(KnownValues, FutureYear, multi);
             }
-            //Normiere Werte
-            for (int i = 0; i < outputs.Count; i++)
-            {
-                zukunft[i].value = Convert.ToDecimal(outputs[i] * Convert.ToDouble(Math.Pow(10, multi)));
-                zukunft[i].year = zukunft[i].year * jm;
-            }
-            if (j < ZukunftsJahr)
-            {
-                return Trainieren(zukunft, ZukunftsJahr, multi);
-            }
+            //wenn alle Jahre bekannt sind, returne die Liste
             else
             {
-                return zukunft;
+                return KnownValues;
             }
 
         }
-        int WertNormieren(List<JahrMitWert> n)
+        int Scale(List<YearWithValue> n)
         {
-            var groessterwert = n[0].value;
-            for (int i = 0; i < n.Count; i++)
-            {
-                if (n[i].value > groessterwert)
-                {
-                    groessterwert = n[i].value;
-                }
-            }
 
-            double temp = Convert.ToDouble(groessterwert);
+            double temp = Convert.ToDouble(n.Max(i => i.value));
             int m = 1;
             while (1 <= temp)
             {
@@ -167,46 +155,32 @@ namespace ki
 
             return m;
         }
-        decimal WertAbsurdisieren(double n, int m)
+        List<YearWithValue> RemoveZero(List<YearWithValue> collection)
         {
-            return Convert.ToDecimal(n * (10 * m));
-        }
-        List<JahrMitWert> EntferneNull(List<JahrMitWert> collection)
-        {
-            List<JahrMitWert> temp = new List<JahrMitWert>();
-            foreach (var item in collection)
-            {
-                if (item.value != 0)
-                {
-                    temp.Add(item);
-                }
-            }
-
+            var temp = collection.Where(i => i.value != 0).ToList();
             return temp;
         }
-        public List<KategorieMitJahrenUndWerten> GetCategoriesWithValuesAndYears()
+        public List<CategoriesWithYearsAndValues> GetCategoriesWithValuesAndYears()
         {
-            MySqlCommand command = conn.CreateCommand();
+            MySqlCommand command = connection.CreateCommand();
             List<string> vs = GetItems();
-            List<KategorieMitJahrenUndWerten> keyValuePairs = new List<KategorieMitJahrenUndWerten>();
+            List<CategoriesWithYearsAndValues> keyValuePairs = new List<CategoriesWithYearsAndValues>();
             foreach (var item in vs)
             {
-                KategorieMitJahrenUndWerten kmjw = new KategorieMitJahrenUndWerten();
-                kmjw.description = item;
+                CategoriesWithYearsAndValues kmjw = new CategoriesWithYearsAndValues();
+                kmjw.category = item;
                 command.CommandText = $"SELECT year, value FROM Daten WHERE item= '{item}';";
                 using (MySqlDataReader reader = command.ExecuteReader())
                 {
 
-                    List<JahrMitWert> temp = new List<JahrMitWert>();
+                    List<YearWithValue> temp = new List<YearWithValue>();
                     while (reader.Read()) //fraglich ob es nicht eine bessere Methode gibt
                     {
                         int tempy = (int)reader["year"];
                         decimal tempv = (decimal)reader["value"];
-                        temp.Add(new JahrMitWert(tempy, tempv));
-
-
+                        temp.Add(new YearWithValue(tempy, tempv, item));
                     }
-                    kmjw.JahreMitWerten = temp;
+                    kmjw.YearsWithValues = temp;
                     keyValuePairs.Add(kmjw);
                 }
             }
@@ -215,7 +189,7 @@ namespace ki
         }
         public List<string> GetItems()
         {
-            MySqlCommand command = conn.CreateCommand();
+            MySqlCommand command = connection.CreateCommand();
             command.CommandText = "SELECT item FROM Daten GROUP BY item;";
             List<string> disziplin = new List<string>();
             using (MySqlDataReader reader = command.ExecuteReader())
@@ -227,6 +201,7 @@ namespace ki
             }
             return disziplin;
         }
+        //wird noch schöner und sicherer gemacht
         static string ConnectionString()
         {
             StringBuilder sb = new StringBuilder();

@@ -16,8 +16,8 @@ namespace ki
     /// </summary>
     class Neuron
     {
-        public double[] inputs = new double[1]; //da kommt immer das jahr rein
-        public double[] weights = new double[1]; //das ist wie wichtig das jahr für das ergebnis ist
+        public double inputs; //da kommt immer das jahr rein
+        public double weights; //das ist wie wichtig das jahr für das ergebnis ist
         public double error; //fehler
         int multiplikator; //variable zum normieren von outputs
         private double biasWeight;
@@ -35,18 +35,18 @@ namespace ki
         public double output
         {
              //get { return sigmoid.output(weights[0] * inputs[0] + weights[1] * inputs[1] + biasWeight); }
-           get { return sigmoid.output(weights[0] * inputs[0] + biasWeight); }
+           get { return sigmoid.output(weights * inputs + biasWeight); }
         }
         //wird beim erstellen der neuronen aufgerufen um mit einem wert zu starten
         public void randomizeWeights()
         {
-            weights[0] = r.NextDouble();
+            weights = r.NextDouble();
             biasWeight = r.NextDouble();
         }
 
         public void adjustWeights()
         {
-            weights[0] += error * inputs[0];
+            weights += error * inputs;
             biasWeight += error;
         }
     }

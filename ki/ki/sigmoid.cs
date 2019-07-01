@@ -11,13 +11,13 @@ namespace ki
         //https://de.wikipedia.org/wiki/Sigmoidfunktion
         public static double output(double x)
         {
-            double temp = 1 / (1 + Math.Exp(-x));
+            double temp = 1 / (1.0 + Math.Exp(-x));
 
             return temp;
 
         }
 
-        public static double abgeleitet(double x)
+        public static double derived(double x)
         {
             return x * (1.0 - x);
         }

@@ -66,6 +66,7 @@
   <ItemGroup>
     <Compile Include="DatenBerechnung.cs" />
     <Compile Include="Disziplin.cs" />
+    <Compile Include="Input.cs" />
     <Compile Include="JahreMitWerten.cs" />
     <Compile Include="KategorieMitJahrenUndWerten.cs" />
     <Compile Include="Neuron.cs" />

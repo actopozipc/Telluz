@@ -1,6 +1,7 @@
-﻿using MySql.Data.MySqlClient;
+﻿using Npgsql;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,22 +9,42 @@ namespace ki
 {
     class CalculateData
     {
-        static MySqlConnection connection = null;
+        static NpgsqlConnection connection = null;
         int categorycount;
         const double divident = 10000;
-        const int x = 9000;
+        const int x = 210;
         public CalculateData()
         {
-            string cs = ConnectionString();
-            connection = new MySqlConnection(cs);
+            string cs = ConfigurationManager.ConnectionStrings["klimaki"].ConnectionString;
+            connection = new NpgsqlConnection(cs);
             connection.Open();
         }
-        public List<CategoriesWithYearsAndValues> Generate()
+        public async Task<List<Countrystats>> GenerateForEachCountryAsync()
         {
+            List<string> laender =  GetCountries(); //Liste mit allen Ländern
+            List<Countrystats> countrystats = new List<Countrystats>();
+            for (int i = 0; i < laender.Count; i++)
+            {
+                await Task.Run(async () =>
+                 {
+                     Countrystats c = new Countrystats();
+                     c.country = laender[i];
+                     c.ListWithCategoriesWithYearsAndValues = await GenerateAsync(laender[i]);
+                     countrystats.Add(c);
+
+                 });
+
+                Console.WriteLine("Land {0} wird gelernt", laender[i]);  
+            }
+            return countrystats;
+        }
+        public async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country)
+        {
+            
             Countrystats countrystats = new Countrystats(); //Klasse für alle Kategorien und deren Werte per Jahr
             countrystats.country = "Austria"; //Land zu dem die Kategorien mit Werte gehören
             //in der Datenbank sind derzeit nur Werte für Österreich drin
-            countrystats.ListWithCategoriesWithYearsAndValues = getCategoriesWithValuesAndYears(); //Werte mit Jahren
+            countrystats.ListWithCategoriesWithYearsAndValues = await getCategoriesWithValuesAndYearsAsync(country); //Werte mit Jahren
             categorycount = countrystats.ListWithCategoriesWithYearsAndValues.Count; //wie viele kategorien an daten für dieses land existieren
             List<CategoriesWithYearsAndValues> CategorysWithFutureValues = new List<CategoriesWithYearsAndValues>();
             Task<List<YearWithValue>>[] liste = new Task<List<YearWithValue>>[categorycount]; //liste damit jede kategorie in einem task abgearbeitet werden kann
@@ -179,28 +200,33 @@ namespace ki
             var temp = collection.Where(i => i.value != 0).ToList();
             return temp;
         }
-        public List<CategoriesWithYearsAndValues> getCategoriesWithValuesAndYears()
+        public async Task<List<CategoriesWithYearsAndValues>> getCategoriesWithValuesAndYearsAsync(string country)
         {
-            MySqlCommand command = connection.CreateCommand();
+            NpgsqlCommand command = connection.CreateCommand();
             List<string> vs = GetItems();
             List<CategoriesWithYearsAndValues> keyValuePairs = new List<CategoriesWithYearsAndValues>();
             foreach (var item in vs)
             {
+                if (item != "Barbados" )
+                {
+
+               
                 CategoriesWithYearsAndValues kmjw = new CategoriesWithYearsAndValues();
                 kmjw.category = item;
-                command.CommandText = $"SELECT year, value FROM Daten WHERE item= '{item}';";
-                using (MySqlDataReader reader = command.ExecuteReader())
+                command.CommandText = $"SELECT year, ROUND(values, 15) FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
+                using (NpgsqlDataReader reader = command.ExecuteReader())
                 {
 
                     List<YearWithValue> temp = new List<YearWithValue>();
-                    while (reader.Read()) //fraglich ob es nicht eine bessere Methode gibt
+                    while (await reader.ReadAsync()) //fraglich ob es nicht eine bessere Methode gibt
                     {
                         int tempy = (int)reader["year"];
-                        decimal tempv = (decimal)reader["value"];
+                        decimal tempv = (decimal)reader["round"];
                         temp.Add(new YearWithValue(tempy, tempv, item));
                     }
                     kmjw.YearsWithValues = temp;
                     keyValuePairs.Add(kmjw);
+                }
                 }
             }
             return keyValuePairs;
@@ -208,28 +234,32 @@ namespace ki
         }
         public List<string> GetItems()
         {
-            MySqlCommand command = connection.CreateCommand();
-            command.CommandText = "SELECT item FROM Daten GROUP BY item;";
+            NpgsqlCommand command = connection.CreateCommand();
+            command.CommandText = "SELECT name FROM category ORDER BY category;";
             List<string> disziplin = new List<string>();
-            using (MySqlDataReader reader = command.ExecuteReader())
+            using (NpgsqlDataReader reader = command.ExecuteReader())
             {
                 while (reader.Read()) //fraglich ob es nicht eine bessere Methode gibt
                 {
-                    disziplin.Add((string)reader["item"]);
+                    disziplin.Add((string)reader["name"]);
                 }
             }
             return disziplin;
         }
-        //wird noch schöner und sicherer gemacht
-        static string ConnectionString()
+        public List<string> GetCountries()
         {
-            StringBuilder sb = new StringBuilder();
-            string server = "localhost";
-            string database = "Welt";
-            string uid = "root";
-            string password = "";
-            return sb.Append("SERVER=" + server + ";" + "DATABASE=" +
-              database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";").ToString();
+            NpgsqlCommand command = connection.CreateCommand();
+            command.CommandText = "SELECT name FROM country_or_area;";
+            List<string> land = new List<string>();
+            using (NpgsqlDataReader reader = command.ExecuteReader())
+            {
+                while ( reader.Read()) //fraglich ob es nicht eine bessere Methode gibt
+                {
+                    land.Add((string)reader["name"]);
+                }
+            }
+            return land;
         }
+      
     }
 }

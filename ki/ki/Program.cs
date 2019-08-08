@@ -13,13 +13,13 @@ namespace ki
      
         static void Main(string[] args)
         {
-            Console.Title = "Gaiaz"; //wir brauchen einen besseren namen
+            Console.Title = "Telluz"; 
             Console.WriteLine("Gestartet um " +DateTime.Now);
             Stopwatch sw = new Stopwatch();
             sw.Start();
            var liste =  Task.Run(async () =>
             {
-               return await methodeAsync();
+               return await asynchroneMainMethodenWerdenErstAbCsharp7ImplementiertAsync();
             }).GetAwaiter().GetResult();
             sw.Stop();
             Console.WriteLine("Elapsed={0}", sw.Elapsed);
@@ -38,12 +38,12 @@ namespace ki
                 }
             }
         }
-        static async Task<List<Countrystats>> methodeAsync()
+        static async Task<List<Countrystats>> asynchroneMainMethodenWerdenErstAbCsharp7ImplementiertAsync()
         {
           
             CalculateData calc = new CalculateData();
           
-        var liste=    await calc.GenerateForEachCountryAsync();
+             var liste = await calc.GenerateForEachCountryAsync();
             return liste;
            
             

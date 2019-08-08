@@ -165,6 +165,7 @@ namespace ki
         Input standardization(List<double> inputs, int Zukunftsjahr)
         {
             Input input = new Input();
+            inputs = inputs.Distinct().ToList(); //Ich weiß dass ich ein Hashset verwenden könnte, aber solange es nicht fix ist dass der bug von hier kommt reicht das
 
             double maxvalue = inputs.Max();
             double count = inputs.Count;

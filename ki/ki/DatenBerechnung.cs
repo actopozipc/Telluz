@@ -21,7 +21,7 @@ namespace ki
         }
         public async Task<List<Countrystats>> GenerateForEachCountryAsync()
         {
-            List<string> laender =  GetCountries(); //Liste mit allen Ländern
+            List<string> laender =  GetCountries(new List<int>()); //Liste mit allen Ländern
             List<Countrystats> countrystats = new List<Countrystats>();
             for (int i = 0; i < laender.Count; i++)
             {
@@ -247,10 +247,22 @@ namespace ki
             }
             return disziplin;
         }
-        public List<string> GetCountries()
+        public List<string> GetCountries(List<int> coaids)
         {
             NpgsqlCommand command = connection.CreateCommand();
-            command.CommandText = "SELECT name FROM country_or_area;";
+            if(coaids.Count == 0)
+            {
+                  command.CommandText = "SELECT name FROM country_or_area;";
+            }
+            else
+            {
+                string temp = "";
+                foreach(var item in coaids)
+                {
+                    //todo
+                }
+            }
+          
             List<string> land = new List<string>();
             using (NpgsqlDataReader reader = command.ExecuteReader())
             {

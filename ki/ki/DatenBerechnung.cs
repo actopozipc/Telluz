@@ -244,9 +244,9 @@ namespace ki
                 List<string> statementConditions = new List<string>();
                 foreach (var item in catids)
                 {
-                    statementConditions.Add("coa_id=" + item);
+                    statementConditions.Add("cat_id=" + item);
                 }
-                command.CommandText = ConcatSQLConditions(statementConditions, "SELECT name FROM country_or_area");
+                command.CommandText = ConcatSQLConditions(statementConditions, "SELECT name FROM category") + " ORDER BY category;";
             }
 
             List<string> disziplin = new List<string>();
@@ -274,9 +274,8 @@ namespace ki
                 {
                     statementConditions.Add("coa_id=" + item);
                 }
-                ConcatSQLConditions(statementConditions, "SELECT name FROM country_or_area");
 
-                command.CommandText = ConcatSQLConditions(statementConditions, "SELECT name FROM country_or_area");
+                command.CommandText = ConcatSQLConditions(statementConditions, "SELECT name FROM country_or_area") + ";";
 
             }
 
@@ -292,8 +291,8 @@ namespace ki
         }
         private string ConcatSQLConditions(List<string> ids, string statement)
         {
-            string temp = String.Join("OR", ids);
-            return statement + "WHERE " + temp + ";";
+            string temp = String.Join(" OR ", ids);
+            return statement + " WHERE " + temp;
         }
     }
 }

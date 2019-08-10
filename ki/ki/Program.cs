@@ -39,19 +39,20 @@ namespace ki
                     }
                 }
             }
+            Console.ReadKey();
         }
         static async Task<List<Countrystats>> AsynchroneMainMethodenWerdenErstAbCsharp7ImplementiertAsync()
         {
           
             CalculateData calc = new CalculateData();
           
-             var liste = await calc.GenerateForEachCountryAsync(new List<int>(), new List<int>());
+             var liste = await calc.GenerateForEachCountryAsync(new List<int>() {39,13 }, new List<int>() { 45 });
             return liste;
             
         }
         static void Printf(string text)
         {
-            Console.ForegroundColor = ConsoleColor.Green;
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine(text);
             Console.ForegroundColor = ConsoleColor.White;
         }

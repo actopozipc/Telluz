@@ -14,23 +14,23 @@ namespace ki
     /// </summary>
     class YearWithValue
     {
-        public double year { get; set; } //jahr
-        public decimal value { get; set; } //wert
-        public string name { get; set; } //macht debugging einfach, fick auf arbeitsspeicher
+        public double Year { get; set; } //jahr
+        public decimal Value { get; set; } //wert
+        public string Name { get; set; } //macht debugging einfach, fick auf arbeitsspeicher
         public YearWithValue()
         {
 
         }
         public YearWithValue(double y, decimal v)
         {
-            year = y;
-            value = v;
+            Year = y;
+            Value = v;
         }
         public YearWithValue(double y, decimal v, string n)
         {
-            year = y;
-            value = v;
-            name = n;
+            Year = y;
+            Value = v;
+            Name = n;
         }
     }
 }

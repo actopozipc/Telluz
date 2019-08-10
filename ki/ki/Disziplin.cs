@@ -8,7 +8,7 @@ namespace ki
 {
     class Countrystats
     {
-        public string country { get; set; } //name des landes
+        public string Country { get; set; } //name des landes
         //liste mit beschreibung der kategorie sowie eine liste mit allen jahren und werten enthält
         public List<CategoriesWithYearsAndValues> ListWithCategoriesWithYearsAndValues { get; set; } 
     }

@@ -43,7 +43,7 @@ namespace ki{
             return keyValuePairs;
 
         }
-        public List<string> GetItems(List<int> catids)
+        private List<string> GetItems(List<int> catids)
         {
             NpgsqlCommand command = connection.CreateCommand();
             if (catids.Count == 0)

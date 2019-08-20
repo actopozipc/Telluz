@@ -58,7 +58,6 @@ namespace ki
                 //Hole einzelne Datensätze für jedes Jahr heraus
                 foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                 {
-
                     SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, YearWithValue.Value, countrystats.ListWithCategoriesWithYearsAndValues[i].category));
                 }
                 //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
@@ -67,7 +66,6 @@ namespace ki
                 //Wenn es mindestens ein Jahr einer Kategorie gibt, in der der Wert nicht 0 ist
                 if (SingleCategoryData.Count > 1)
                 {
-
                     //Bearbeite eigenen Datensatz
                     int multi = Scale(SingleCategoryData) - 1; //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
                     //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
@@ -134,7 +132,6 @@ namespace ki
                     outputNeuron.adjustWeights();
                     hiddenNeuron1.error = sigmoid.derived(hiddenNeuron1.output) * outputNeuron.error * outputNeuron.weights;
                     hiddenNeuron1.adjustWeights();
-
                 }
 
                 lernvorgang++;
@@ -148,7 +145,6 @@ namespace ki
             //Dann Rekursion bis das größte Jahr nicht mehr kleiner ist als das Jahr bis zu dem wir rechnen wollen
             if (j < FutureYear)
             {
-
                 hiddenNeuron1.inputs = input.getNormierterWert(j) + input.step;
                 outputNeuron.inputs = hiddenNeuron1.output;
                 KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), Convert.ToDecimal(outputNeuron.output * Convert.ToDouble(Math.Pow(10, multi)))));
@@ -173,18 +169,15 @@ namespace ki
             List<double> normierteWerte = new List<double>();
             input.step = step;
             double i = 0;
-
             foreach (var item in inputs)
             {
                 input.Add(item, i);
                 i = i + step;
             }
-
             return input;
         }
         int Scale(List<YearWithValue> n)
         {
-
             double temp = Convert.ToDouble(n.Max(i => i.Value));
             int m = 1;
             while (1 <= temp)
@@ -192,7 +185,6 @@ namespace ki
                 temp = temp / 10;
                 m++;
             }
-
             return m;
         }
         List<YearWithValue> RemoveZero(List<YearWithValue> collection)

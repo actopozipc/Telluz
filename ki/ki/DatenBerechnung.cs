@@ -71,7 +71,7 @@ namespace ki
                     //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
                     liste[i] = Task<List<YearWithValue>>.Run(() =>
                        {
-                           return Train(SingleCategoryData, 2030, multi);
+                           return TrainLinear(SingleCategoryData, 2030);
                        });
 
                 }
@@ -93,6 +93,59 @@ namespace ki
             return CategorysWithFutureValues;
 
         }
+        private List<YearWithValue> TrainLinear(List<YearWithValue> KnownValues, int FutureYear)
+        {
+            List<double> inputs = new List<double>(); //Jahre
+            List<double> outputs = new List<double>(); //Werte 
+            //Für jedes Jahr mit Wert in der Liste mit Jahren und Werten d
+            foreach (var YearWithValue in KnownValues)
+            {
+                inputs.Add(Convert.ToDouble(YearWithValue.Year));
+                outputs.Add(Convert.ToDouble(YearWithValue.Value));
+            }
+            Neuron hiddenNeuron1 = new Neuron();
+            Neuron outputNeuron = new Neuron();
+            hiddenNeuron1.randomizeWeights();
+            outputNeuron.randomizeWeights();
+            int lernvorgang = 0;
+            int z = KnownValues.Count;
+            //Trainiere alle bekannten Werte x mal
+            while (lernvorgang < x)
+            {
+
+                for (int i = 0; i < z; i++)
+                {
+                    hiddenNeuron1.inputs = inputs[i];
+                    outputNeuron.inputs = hiddenNeuron1.linearOutput;
+                    outputNeuron.error = outputs[i] - outputNeuron.linearOutput;
+                    outputNeuron.adjustWeights();
+                    hiddenNeuron1.error = outputs[i] - hiddenNeuron1.linearOutput;
+                    hiddenNeuron1.adjustWeights();
+                }
+
+                lernvorgang++;
+            }
+            //bekomme immer das höchste jahr
+            double j = KnownValues.Max(i => i.Year);
+
+            //wenn das höchste bekannte jahr kleiner ist als das Jahr, bis zu dem wir die Werte wissen wollen, 
+            //dann füge das nächste Jahr als input ins Neuron, bekomme den Output und füge es in die Liste mit allen Werten ein
+            //Dann Rekursion bis das größte Jahr nicht mehr kleiner ist als das Jahr bis zu dem wir rechnen wollen
+            if (j < FutureYear)
+            {
+                int i = Convert.ToInt32(j++);
+                hiddenNeuron1.inputs = i;
+                outputNeuron.inputs = hiddenNeuron1.linearOutput;
+                KnownValues.Add(new YearWithValue((i), Convert.ToDecimal(outputNeuron.linearOutput)));
+                return TrainLinear(KnownValues, FutureYear);
+            }
+            //wenn alle Jahre bekannt sind, returne die Liste
+            else
+            {
+                return KnownValues;
+            }
+
+        }
         /// <summary>
         /// Sieht anhand einer Liste mit Jahren und Zahlen den Wert für Jahr Ziel voraus
         /// </summary>
@@ -100,7 +153,7 @@ namespace ki
         /// <param name="FutureYear"> Bis zu welchem Jahr die KI werte vorhersagen soll</param>
         /// <param name="multi">Wie viel man normierte Werte mulitplizieren muss</param>
         /// <returns>Liste mit allen bereits bekannten Werten + Vorhersagen für zukünftige Werte</returns>
-        private List<YearWithValue> Train(List<YearWithValue> KnownValues, int FutureYear, int multi)
+        private List<YearWithValue> TrainSigmoid(List<YearWithValue> KnownValues, int FutureYear, int multi)
         {
 
             List<double> inputs = new List<double>(); //Jahre
@@ -127,10 +180,10 @@ namespace ki
                 for (int i = 0; i < z; i++)
                 {
                     hiddenNeuron1.inputs = input.getNormierterWert(inputs[i]);
-                    outputNeuron.inputs = hiddenNeuron1.output;
-                    outputNeuron.error = sigmoid.derived(outputNeuron.output) * (outputs[i] - outputNeuron.output);
+                    outputNeuron.inputs = hiddenNeuron1.sigmoidOutput;
+                    outputNeuron.error = sigmoid.derived(outputNeuron.sigmoidOutput) * (outputs[i] - outputNeuron.sigmoidOutput);
                     outputNeuron.adjustWeights();
-                    hiddenNeuron1.error = sigmoid.derived(hiddenNeuron1.output) * outputNeuron.error * outputNeuron.weights;
+                    hiddenNeuron1.error = sigmoid.derived(hiddenNeuron1.sigmoidOutput) * outputNeuron.error * outputNeuron.weights;
                     hiddenNeuron1.adjustWeights();
                 }
 
@@ -146,9 +199,9 @@ namespace ki
             if (j < FutureYear)
             {
                 hiddenNeuron1.inputs = input.getNormierterWert(j) + input.step;
-                outputNeuron.inputs = hiddenNeuron1.output;
-                KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), Convert.ToDecimal(outputNeuron.output * Convert.ToDouble(Math.Pow(10, multi)))));
-                return Train(KnownValues, FutureYear, multi);
+                outputNeuron.inputs = hiddenNeuron1.sigmoidOutput;
+                KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), Convert.ToDecimal(outputNeuron.sigmoidOutput * Convert.ToDouble(Math.Pow(10, multi)))));
+                return TrainSigmoid(KnownValues, FutureYear, multi);
             }
             //wenn alle Jahre bekannt sind, returne die Liste
             else

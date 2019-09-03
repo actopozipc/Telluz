@@ -32,10 +32,14 @@ namespace ki
         {
             multiplikator = m;
         }
-        public double output
+        public double sigmoidOutput
         {
              //get { return sigmoid.output(weights[0] * inputs[0] + weights[1] * inputs[1] + biasWeight); }
            get { return sigmoid.output(weights * inputs + biasWeight); }
+        }
+        public double linearOutput
+        {
+            get { return inputs * weights + biasWeight; }
         }
         //wird beim erstellen der neuronen aufgerufen um mit einem wert zu starten
         public void randomizeWeights()

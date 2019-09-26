@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using CNTK;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -170,7 +171,91 @@ namespace ki
         }
         private List<YearWithValue> TrainLinear(List<YearWithValue> KnownValues, int FutureYear)
         {
+            var device = DeviceDescriptor.UseDefaultDevice();
+            //Step 2: define values, and variables
+            Variable x = Variable.InputVariable(new int[] { 1 }, DataType.Double, "input");
+            Variable y = Variable.InputVariable(new int[] { 1 }, DataType.Float, "output");
+            //Step 2: define training data set from table above
+            var xValues = Value.CreateBatch(new NDShape(1, 1), CategoriesWithYearsAndValues.GetYearsFromList(KnownValues), device);
+            var yValues = Value.CreateBatch(new NDShape(1, 1), CategoriesWithYearsAndValues.GetValuesFromList(KnownValues), device);
+            //Step 3: create linear regression model
+            var lr = createLRModel(x, device);
+            //Network model contains only two parameters b and w, so we query
+            //the model in order to get parameter values
+            var paramValues = lr.Inputs.Where(z => z.IsParameter).ToList();
+            var totalParameters = paramValues.Sum(c => c.Shape.TotalSize);
+            //Step 4: create trainer
+            var trainer = createTrainer(lr, y);
+            //Ştep 5: training
+            for (int i = 1; i <= 200; i++)
+            {
+                var d = new Dictionary<Value, MinibatchData>();
+                d.Add(x, xValues);
+                d.Add(y, yValues);
+                //
+                trainer.TrainMinibatch(d, true, device);
+                //
+                var loss = trainer.PreviousMinibatchLossAverage();
+                var eval = trainer.PreviousMinibatchEvaluationAverage();
+                //
+                if (i % 20 == 0)
+                    Console.WriteLine($"It={i}, Loss={loss}, Eval={eval}");
 
+                if (i == 200)
+                {
+                    //print weights
+                    var b0_name = paramValues[0].Name;
+                    var b0 = new Value(paramValues[0].GetValue()).GetDenseData(paramValues[0]);
+                    var b1_name = paramValues[1].Name;
+                    var b1 = new Value(paramValues[1].GetValue()).GetDenseData(paramValues[1]);
+                    Console.WriteLine($" ");
+                    Console.WriteLine($"Training process finished with the following regression parameters:");
+                    Console.WriteLine($"b={b0[0][0]}, w={b1[0][0]}");
+                    Console.WriteLine($" ");
+                }
+            }
+        }
+        public Trainer createTrainer(Function network, Variable target)
+        {
+            //learning rate
+            var lrate = 0.082;
+            var lr = new TrainingParameterScheduleDouble(lrate);
+            //network parameters
+            var zParams = new ParameterVector(network.Parameters().ToList());
+
+            //create loss and eval
+            Function loss = CNTKLib.SquaredError(network, target);
+            Function eval = CNTKLib.SquaredError(network, target);
+
+            //learners
+            //
+            var llr = new List<Learner>();
+            var msgd = Learner.SGDLearner(network.Parameters(), lr);
+            llr.Add(msgd);
+
+            //trainer
+            var trainer = Trainer.CreateTrainer(network, loss, eval, llr);
+            //
+            return trainer;
+        }
+        private  Function createLRModel(Variable x, DeviceDescriptor device)
+        {
+            //initializer for parameters
+            var initV = CNTKLib.GlorotUniformInitializer(1.0, 1, 0, 1);
+
+            //bias
+            var b = new Parameter(new NDShape(1, 1), DataType.Float, initV, device, "b"); ;
+
+            //weights
+            var W = new Parameter(new NDShape(2, 1), DataType.Float, initV, device, "w");
+
+            //matrix product
+            var Wx = CNTKLib.Times(W, x, "wx");
+
+            //layer
+            var l = CNTKLib.Plus(b, Wx, "wx_b");
+
+            return l;
         }
         Input Standardization(List<double> inputs, int Zukunftsjahr)
         {

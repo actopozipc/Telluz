@@ -69,10 +69,21 @@ namespace ki
                     //Bearbeite eigenen Datensatz
                     int multi = Scale(SingleCategoryData) - 1; //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
                     //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
-                    liste[i] = Task<List<YearWithValue>>.Run(() =>
-                       {
-                           return Train(SingleCategoryData, 2030, multi);
-                       });
+                  
+                           if (DifferentValuesCount(SingleCategoryData)>2)
+                           {
+                            //linear train
+
+                           }
+                           else
+                           {
+                        liste[i] = Task<List<YearWithValue>>.Run(() =>
+                        {
+                            return TrainSigmoid(SingleCategoryData, 2030, multi);
+                        });
+                    }
+                           
+                   
 
                 }
                 //ohne dieses else gäbe es einige leere Tasks im Array -> Exception
@@ -100,7 +111,7 @@ namespace ki
         /// <param name="FutureYear"> Bis zu welchem Jahr die KI werte vorhersagen soll</param>
         /// <param name="multi">Wie viel man normierte Werte mulitplizieren muss</param>
         /// <returns>Liste mit allen bereits bekannten Werten + Vorhersagen für zukünftige Werte</returns>
-        private List<YearWithValue> Train(List<YearWithValue> KnownValues, int FutureYear, int multi)
+        private List<YearWithValue> TrainSigmoid(List<YearWithValue> KnownValues, int FutureYear, int multi)
         {
 
             List<double> inputs = new List<double>(); //Jahre
@@ -148,13 +159,17 @@ namespace ki
                 hiddenNeuron1.inputs = input.getNormierterWert(j) + input.step;
                 outputNeuron.inputs = hiddenNeuron1.output;
                 KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), Convert.ToDecimal(outputNeuron.output * Convert.ToDouble(Math.Pow(10, multi)))));
-                return Train(KnownValues, FutureYear, multi);
+                return TrainSigmoid(KnownValues, FutureYear, multi);
             }
             //wenn alle Jahre bekannt sind, returne die Liste
             else
             {
                 return KnownValues;
             }
+
+        }
+        private List<YearWithValue> TrainLinear(List<YearWithValue> KnownValues, int FutureYear)
+        {
 
         }
         Input Standardization(List<double> inputs, int Zukunftsjahr)
@@ -191,6 +206,10 @@ namespace ki
         {
             var temp = collection.Where(i => i.Value != 0).ToList();
             return temp;
+        }
+        private int DifferentValuesCount(List<YearWithValue> values)
+        {
+            return values.Distinct().Count();
         }
        
     }

@@ -73,7 +73,8 @@ namespace ki
                   
                            if (DifferentValuesCount(SingleCategoryData)>2)
                            {
-                            //linear train
+                        //linear train
+                        TrainLinear(SingleCategoryData, 2040);
 
                            }
                            else
@@ -83,9 +84,6 @@ namespace ki
                             return TrainSigmoid(SingleCategoryData, 2030, multi);
                         });
                     }
-                           
-                   
-
                 }
                 //ohne dieses else gäbe es einige leere Tasks im Array -> Exception
                 //ohne if geht die KI datensätze ohne einträge durch -> Verschwendung von Rechenleistung und Zeit
@@ -173,7 +171,7 @@ namespace ki
         {
             var device = DeviceDescriptor.UseDefaultDevice();
             //Step 2: define values, and variables
-            Variable x = Variable.InputVariable(new int[] { 1 }, DataType.Double, "input");
+            Variable x = Variable.InputVariable(new int[] { 1 }, DataType.Float, "input");
             Variable y = Variable.InputVariable(new int[] { 1 }, DataType.Float, "output");
             //Step 2: define training data set from table above
             var xValues = Value.CreateBatch(new NDShape(1, 1), CategoriesWithYearsAndValues.GetYearsFromList(KnownValues), device);
@@ -187,9 +185,10 @@ namespace ki
             //Step 4: create trainer
             var trainer = createTrainer(lr, y);
             //Ştep 5: training
+            double b = 0, w = 0;
             for (int i = 1; i <= 200; i++)
             {
-                var d = new Dictionary<Value, MinibatchData>();
+                var d = new Dictionary<Variable, Value>();
                 d.Add(x, xValues);
                 d.Add(y, yValues);
                 //
@@ -205,15 +204,26 @@ namespace ki
                 {
                     //print weights
                     var b0_name = paramValues[0].Name;
-                    var b0 = new Value(paramValues[0].GetValue()).GetDenseData(paramValues[0]);
+                    var b0 = new Value(paramValues[0].GetValue()).GetDenseData<float>(paramValues[0]);
                     var b1_name = paramValues[1].Name;
-                    var b1 = new Value(paramValues[1].GetValue()).GetDenseData(paramValues[1]);
+                    var b1 = new Value(paramValues[1].GetValue()).GetDenseData<float>(paramValues[1]);
                     Console.WriteLine($" ");
                     Console.WriteLine($"Training process finished with the following regression parameters:");
                     Console.WriteLine($"b={b0[0][0]}, w={b1[0][0]}");
+                    b = b0[0][0];
+                    w = b1[0][0];
                     Console.WriteLine($" ");
                 }
             }
+            double j = KnownValues.Max(i => i.Year);
+            if (j<FutureYear)
+            {
+                for (double i = j+1; i < FutureYear; i++)
+                {
+                    KnownValues.Add(new YearWithValue(i, (Convert.ToDecimal(w*i+b))));
+                }
+            }
+            return KnownValues;
         }
         public Trainer createTrainer(Function network, Variable target)
         {

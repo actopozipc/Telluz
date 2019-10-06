@@ -174,8 +174,11 @@ namespace ki
             Variable x = Variable.InputVariable(new int[] { 1 }, DataType.Float, "input");
             Variable y = Variable.InputVariable(new int[] { 1 }, DataType.Float, "output");
             //Step 2: define training data set from table above
-            var xValues = Value.CreateBatch(new NDShape(1, 1), CategoriesWithYearsAndValues.GetYearsFromList(KnownValues), device);
-            var yValues = Value.CreateBatch(new NDShape(1, 1), CategoriesWithYearsAndValues.GetValuesFromList(KnownValues), device);
+            float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
+         
+            float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
+            var xValues = Value.CreateBatch(new NDShape(1, 1), inputs, device);
+            var yValues = Value.CreateBatch(new NDShape(1, 1), outputs, device);
             //Step 3: create linear regression model
             var lr = createLRModel(x, device);
             //Network model contains only two parameters b and w, so we query
@@ -195,7 +198,7 @@ namespace ki
                 trainer.TrainMinibatch(d, true, device);
                 //
                 var loss = trainer.PreviousMinibatchLossAverage();
-                var eval = trainer.PreviousMinibatchEvaluationAverage();
+                var eval = trainer.PreviousMinibatchLossAverage();
                 //
                 if (i % 20 == 0)
                     Console.WriteLine($"It={i}, Loss={loss}, Eval={eval}");

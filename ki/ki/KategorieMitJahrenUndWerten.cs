@@ -20,23 +20,24 @@ namespace ki
             this.category = category;
             YearsWithValues = YearsWithValuesTask.Result;
         }
-     public   static List<float> GetYearsFromList(List<YearWithValue> list)
+     public   static float[] GetYearsFromList(List<YearWithValue> list)
         {
-            List<float> jahre = new List<float>();
-            foreach (var item in list)
+            int count = list.Count;
+            float[] jahre = new float[count];
+            for (int i = 0; i < count; i++)
             {
-                jahre.Add((float)item.Year);
+                jahre[i] = float.Parse(list[i].Year.ToString());
             }
             return jahre;
         }
-        public static List<float> GetValuesFromList(List<YearWithValue> list)
+        public static float[] GetValuesFromList(List<YearWithValue> list)
         {
-            List<float> werte = new List<float>();
-            foreach (var item in list)
+            int count = list.Count;
+            float[] werte = new float[count];
+            for (int i = 0; i < count; i++)
             {
-                werte.Add((float)(item.Value));
+                werte[i] = float.Parse(list[i].Value.ToString());
             }
-         
             return werte;
         }
         //Konstruktor nicht löschen

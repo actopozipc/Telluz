@@ -74,8 +74,10 @@ namespace ki
                            if (DifferentValuesCount(SingleCategoryData)>2)
                            {
                         //linear train
-                        TrainLinear(SingleCategoryData, 2040);
-
+                        liste[i] = Task<List<YearWithValue>>.Run(() =>
+                        {
+                            return TrainLinear(SingleCategoryData, 2030, multi);
+                        });
                            }
                            else
                            {
@@ -167,7 +169,7 @@ namespace ki
             }
 
         }
-        private List<YearWithValue> TrainLinear(List<YearWithValue> KnownValues, int FutureYear)
+        private List<YearWithValue> TrainLinear(List<YearWithValue> KnownValues, int FutureYear, int multi)
         {
             var device = DeviceDescriptor.UseDefaultDevice();
             //Step 2: define values, and variables
@@ -175,10 +177,17 @@ namespace ki
             Variable y = Variable.InputVariable(new int[] { 1 }, DataType.Float, "output");
             //Step 2: define training data set from table above
             float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
-         
+            List<double> temp = new List<double>();
+            foreach (var item in inputs)
+            {
+                temp.Add(item); //Small brain schleife?
+            }
+            Input input = Standardization(temp, FutureYear);
+            inputs = input.getAlleJahreNormiert();
             float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
-            var xValues = Value.CreateBatch(new NDShape(1, 1), inputs, device);
-            var yValues = Value.CreateBatch(new NDShape(1, 1), outputs, device);
+            //Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
+            var xValues = Value.CreateBatch(new NDShape(1, 1), new float[] { inputs[inputs.Length - 2],  inputs[inputs.Length-1],}, device);
+            var yValues = Value.CreateBatch(new NDShape(1, 1), new float[] { outputs[inputs.Length - 2], outputs[outputs.Length - 1] }, device);
             //Step 3: create linear regression model
             var lr = createLRModel(x, device);
             //Network model contains only two parameters b and w, so we query
@@ -189,7 +198,8 @@ namespace ki
             var trainer = createTrainer(lr, y);
             //Ştep 5: training
             double b = 0, w = 0;
-            for (int i = 1; i <= 200; i++)
+            int max = 2000;
+            for (int i = 1; i <= max; i++)
             {
                 var d = new Dictionary<Variable, Value>();
                 d.Add(x, xValues);
@@ -198,12 +208,12 @@ namespace ki
                 trainer.TrainMinibatch(d, true, device);
                 //
                 var loss = trainer.PreviousMinibatchLossAverage();
-                var eval = trainer.PreviousMinibatchLossAverage();
+                var eval = trainer.PreviousMinibatchEvaluationAverage();
                 //
-                if (i % 20 == 0)
+                if (i % 200 == 0)
                     Console.WriteLine($"It={i}, Loss={loss}, Eval={eval}");
 
-                if (i == 200)
+                if (i == max)
                 {
                     //print weights
                     var b0_name = paramValues[0].Name;
@@ -218,20 +228,25 @@ namespace ki
                     Console.WriteLine($" ");
                 }
             }
+        
             double j = KnownValues.Max(i => i.Year);
             if (j<FutureYear)
             {
-                for (double i = j+1; i < FutureYear; i++)
+                float i = inputs.Max(); 
+                while (i<1)
                 {
-                    KnownValues.Add(new YearWithValue(i, (Convert.ToDecimal(w*i+b))));
+                    i += float.Parse(input.step.ToString());
+                    KnownValues.Add(new YearWithValue(i, (Convert.ToDecimal(w * i + b))));
                 }
+               
+            
             }
             return KnownValues;
         }
         public Trainer createTrainer(Function network, Variable target)
         {
             //learning rate
-            var lrate = 0.082;
+            var lrate = 0.0082;
             var lr = new TrainingParameterScheduleDouble(lrate);
             //network parameters
             var zParams = new ParameterVector(network.Parameters().ToList());
@@ -274,7 +289,6 @@ namespace ki
         {
             Input input = new Input();
             inputs = inputs.Distinct().ToList(); //Ich weiß dass ich ein Hashset verwenden könnte, aber ich weiß nicht ob sich das von der Performance lohnt. Add in Hashset = braucht länger als liste, dafür konsumiert liste.distinct zeit
-
             double maxvalue = inputs.Max();
             double count = inputs.Count;
             double diff = Zukunftsjahr - maxvalue;

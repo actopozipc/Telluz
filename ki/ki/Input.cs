@@ -18,5 +18,15 @@ namespace ki
         {
            return jahrMitNormierung[jahr];
         }
+        public float[] getAlleJahreNormiert()
+        {
+            float[] array = new float[jahrMitNormierung.Count];
+           
+            for (int i = 0; i < jahrMitNormierung.Count; i++)
+            {
+                array[i] = float.Parse(jahrMitNormierung.ElementAt(i).Value.ToString());
+            }
+            return array;
+        }
     }
 }

@@ -46,7 +46,7 @@ namespace ki
           
             CalculateData calc = new CalculateData();
           
-             var liste = await calc.GenerateForEachCountryAsync(new List<int>() {39,13 }, new List<int>() { 45 });
+             var liste = await calc.GenerateForEachCountryAsync(new List<int>() {11,3 }, new List<int>() { 45 });
             return liste;
             
         }

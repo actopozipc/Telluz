@@ -186,8 +186,9 @@ namespace ki
             inputs = input.getAlleJahreNormiert();
             float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
             //Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
-            var xValues = Value.CreateBatch(new NDShape(1, 1), new float[] { inputs[inputs.Length - 2],  inputs[inputs.Length-1],}, device);
-            var yValues = Value.CreateBatch(new NDShape(1, 1), new float[] { outputs[inputs.Length - 2], outputs[outputs.Length - 1] }, device);
+         
+            var xValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(inputs,20, input.step), device);
+            var yValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(outputs, 20, input.step), device);
             //Step 3: create linear regression model
             var lr = createLRModel(x, device);
             //Network model contains only two parameters b and w, so we query
@@ -198,7 +199,7 @@ namespace ki
             var trainer = createTrainer(lr, y);
             //Ştep 5: training
             double b = 0, w = 0;
-            int max = 2000;
+            int max = 20000;
             for (int i = 1; i <= max; i++)
             {
                 var d = new Dictionary<Variable, Value>();
@@ -210,7 +211,7 @@ namespace ki
                 var loss = trainer.PreviousMinibatchLossAverage();
                 var eval = trainer.PreviousMinibatchEvaluationAverage();
                 //
-                if (i % 200 == 0)
+                if (i % 2000 == 0)
                     Console.WriteLine($"It={i}, Loss={loss}, Eval={eval}");
 
                 if (i == max)
@@ -230,16 +231,30 @@ namespace ki
             }
         
             double j = KnownValues.Max(i => i.Year);
+
             if (j<FutureYear)
             {
-                float i = inputs.Max(); 
-                while (i<1)
+                float i = inputs.Max();
+
+                while (j < FutureYear)
                 {
-                    i += float.Parse(input.step.ToString());
-                    KnownValues.Add(new YearWithValue(i, (Convert.ToDecimal(w * i + b))));
+                    j++;
+
+                    KnownValues.Add(new YearWithValue(j, (Convert.ToDecimal(w * i + b))));
+                    float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
+                    List<double> fuckinghelpme = new List<double>();
+                    foreach (var item in inputtemp)
+                    {
+                        fuckinghelpme.Add(item); //Small brain schleife?
+                    }
+                    Input input2 = Standardization(fuckinghelpme, FutureYear);
+                    inputtemp = input2.getAlleJahreNormiert();
+                    i = inputtemp.Max();
+
                 }
-               
+                 
             
+    
             }
             return KnownValues;
         }
@@ -322,6 +337,20 @@ namespace ki
         private int DifferentValuesCount(List<YearWithValue> values)
         {
             return values.Distinct().Count();
+        }
+        //Findet die letzten n höchsten Werte, also zB n= 5 in einem Array mit 10 Zahlen gibt die Zahlen von 5-10 zurück
+        private float[] GetLastNValues(float[] array, int n, double step)
+        {
+            int count = array.Count();
+            int temp = n;
+            float[] f = new float[n];
+            for (int i = count-1; i >count-n; i--)
+            {
+                f[temp-1] = array[i];
+                temp--;
+            }
+            f[0] = float.Parse(Convert.ToString(f[1] - step));
+            return f;
         }
        
     }

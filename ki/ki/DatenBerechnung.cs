@@ -1,4 +1,6 @@
 ﻿using CNTK;
+using Microsoft.ML;
+using Microsoft.ML.Trainers;
 using Npgsql;
 using System;
 using System.Collections.Generic;
@@ -59,7 +61,7 @@ namespace ki
                 //Hole einzelne Datensätze für jedes Jahr heraus
                 foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                 {
-                    SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, YearWithValue.Value, countrystats.ListWithCategoriesWithYearsAndValues[i].category));
+                    SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, Convert.ToDecimal(YearWithValue.Value), countrystats.ListWithCategoriesWithYearsAndValues[i].category));
                 }
                 //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
                 //entferne deswegen 0
@@ -171,115 +173,125 @@ namespace ki
         }
         private List<YearWithValue> TrainLinear(List<YearWithValue> KnownValues, int FutureYear, int multi)
         {
-            var device = DeviceDescriptor.UseDefaultDevice();
-            //Step 2: define values, and variables
-            Variable x = Variable.InputVariable(new int[] { 1 }, DataType.Float, "input");
-            Variable y = Variable.InputVariable(new int[] { 1 }, DataType.Float, "output");
-            //Step 2: define training data set from table above
-            float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
-            List<double> temp = new List<double>();
-            foreach (var item in inputs)
-            {
-                temp.Add(item); //Small brain schleife?
-            }
-            Input input = Standardization(temp, FutureYear);
-            inputs = input.getAlleJahreNormiert();
-            float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
-            //Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
+            MLContext mlContext = new MLContext(seed: 0);
+            var model = createTrainer(mlContext, KnownValues);
+            Evaluate(mlContext, model, KnownValues);
+            TestSinglePrediction(mlContext, model);
+            //var device = DeviceDescriptor.UseDefaultDevice();
+            ////Step 2: define values, and variables
+            //Variable x = Variable.InputVariable(new int[] { 1 }, DataType.Float, "input");
+            //Variable y = Variable.InputVariable(new int[] { 1 }, DataType.Float, "output");
+            ////Step 2: define training data set from table above
+            //float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
+            //List<double> temp = new List<double>();
+            //foreach (var item in inputs)
+            //{
+            //    temp.Add(item); //Small brain schleife?
+            //}
+            //Input input = Standardization(temp, FutureYear);
+            //inputs = input.getAlleJahreNormiert();
+            //float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
+            ////Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
          
-            var xValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(inputs,20, input.step), device);
-            var yValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(outputs, 20, input.step), device);
-            //Step 3: create linear regression model
-            var lr = createLRModel(x, device);
-            //Network model contains only two parameters b and w, so we query
-            //the model in order to get parameter values
-            var paramValues = lr.Inputs.Where(z => z.IsParameter).ToList();
-            var totalParameters = paramValues.Sum(c => c.Shape.TotalSize);
-            //Step 4: create trainer
-            var trainer = createTrainer(lr, y);
-            //Ştep 5: training
-            double b = 0, w = 0;
-            int max = 20000;
-            for (int i = 1; i <= max; i++)
-            {
-                var d = new Dictionary<Variable, Value>();
-                d.Add(x, xValues);
-                d.Add(y, yValues);
-                //
-                trainer.TrainMinibatch(d, true, device);
-                //
-                var loss = trainer.PreviousMinibatchLossAverage();
-                var eval = trainer.PreviousMinibatchEvaluationAverage();
-                //
-                if (i % 2000 == 0)
-                    Console.WriteLine($"It={i}, Loss={loss}, Eval={eval}");
+            //var xValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(inputs,20, input.step), device);
+            //var yValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(outputs, 20, input.step), device);
+            ////Step 3: create linear regression model
+            //var lr = createLRModel(x, device);
+            ////Network model contains only two parameters b and w, so we query
+            ////the model in order to get parameter values
+            //var paramValues = lr.Inputs.Where(z => z.IsParameter).ToList();
+            //var totalParameters = paramValues.Sum(c => c.Shape.TotalSize);
+            ////Step 4: create trainer
+            //var trainer = createTrainer(lr, y);
+            ////Ştep 5: training
+            //double b = 0, w = 0;
+            //int max = 20000;
+            //for (int i = 1; i <= max; i++)
+            //{
+            //    var d = new Dictionary<Variable, Value>();
+            //    d.Add(x, xValues);
+            //    d.Add(y, yValues);
+            //    //
+            //    trainer.TrainMinibatch(d, true, device);
+            //    //
+            //    var loss = trainer.PreviousMinibatchLossAverage();
+            //    var eval = trainer.PreviousMinibatchEvaluationAverage();
+            //    //
+            //    if (i % 2000 == 0)
+            //        Console.WriteLine($"It={i}, Loss={loss}, Eval={eval}");
 
-                if (i == max)
-                {
-                    //print weights
-                    var b0_name = paramValues[0].Name;
-                    var b0 = new Value(paramValues[0].GetValue()).GetDenseData<float>(paramValues[0]);
-                    var b1_name = paramValues[1].Name;
-                    var b1 = new Value(paramValues[1].GetValue()).GetDenseData<float>(paramValues[1]);
-                    Console.WriteLine($" ");
-                    Console.WriteLine($"Training process finished with the following regression parameters:");
-                    Console.WriteLine($"b={b0[0][0]}, w={b1[0][0]}");
-                    b = b0[0][0];
-                    w = b1[0][0];
-                    Console.WriteLine($" ");
-                }
-            }
+            //    if (i == max)
+            //    {
+            //        //print weights
+            //        var b0_name = paramValues[0].Name;
+            //        var b0 = new Value(paramValues[0].GetValue()).GetDenseData<float>(paramValues[0]);
+            //        var b1_name = paramValues[1].Name;
+            //        var b1 = new Value(paramValues[1].GetValue()).GetDenseData<float>(paramValues[1]);
+            //        Console.WriteLine($" ");
+            //        Console.WriteLine($"Training process finished with the following regression parameters:");
+            //        Console.WriteLine($"b={b0[0][0]}, w={b1[0][0]}");
+            //        b = b0[0][0];
+            //        w = b1[0][0];
+            //        Console.WriteLine($" ");
+            //    }
+            //}
         
-            double j = KnownValues.Max(i => i.Year);
+            //double j = KnownValues.Max(i => i.Year);
 
-            if (j<FutureYear)
-            {
-                float i = inputs.Max();
+            //if (j<FutureYear)
+            //{
+            //    float i = inputs.Max();
 
-                while (j < FutureYear)
-                {
-                    j++;
+            //    while (j < FutureYear)
+            //    {
+            //        j++;
 
-                    KnownValues.Add(new YearWithValue(j, (Convert.ToDecimal(w * i + b))));
-                    float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
-                    List<double> fuckinghelpme = new List<double>();
-                    foreach (var item in inputtemp)
-                    {
-                        fuckinghelpme.Add(item); //Small brain schleife?
-                    }
-                    Input input2 = Standardization(fuckinghelpme, FutureYear);
-                    inputtemp = input2.getAlleJahreNormiert();
-                    i = inputtemp.Max();
+            //        KnownValues.Add(new YearWithValue(j, (Convert.ToDecimal(w * i + b))));
+            //        float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
+            //        List<double> fuckinghelpme = new List<double>();
+            //        foreach (var item in inputtemp)
+            //        {
+            //            fuckinghelpme.Add(item); //Small brain schleife?
+            //        }
+            //        Input input2 = Standardization(fuckinghelpme, FutureYear);
+            //        inputtemp = input2.getAlleJahreNormiert();
+            //        i = inputtemp.Max();
 
-                }
+            //    }
                  
             
     
-            }
+            //}
             return KnownValues;
         }
-        public Trainer createTrainer(Function network, Variable target)
+        public ITransformer createTrainer(MLContext mlContext, List<YearWithValue> list)
         {
-            //learning rate
-            var lrate = 0.0082;
-            var lr = new TrainingParameterScheduleDouble(lrate);
-            //network parameters
-            var zParams = new ParameterVector(network.Parameters().ToList());
+            //Load Data
+            IDataView data = mlContext.Data.LoadFromEnumerable(list);
+            var pipeline = mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: "Value")
+                .Append(mlContext.Transforms.Categorical.OneHotEncoding(outputColumnName: "YearEncoded", inputColumnName: "Year"))
+                .Append(mlContext.Transforms.Concatenate("Features", "YearEncoded"))
+                .Append(mlContext.Regression.Trainers.FastTree()); //Fast Tree wo?
 
-            //create loss and eval
-            Function loss = CNTKLib.SquaredError(network, target);
-            Function eval = CNTKLib.SquaredError(network, target);
+            return pipeline.Fit(data);
+      
+        }
+        private static void Evaluate(MLContext mlContext, ITransformer model, List<YearWithValue> list)
+        {
+            IDataView data = mlContext.Data.LoadFromEnumerable<YearWithValue>(list);
+            var predictions = model.Transform(data);
+            var metrics = mlContext.Regression.Evaluate(predictions, "Label", "Score");
+            Console.WriteLine($"*       RSquared Score:      {metrics.RSquared:0.##}");
+            Console.WriteLine($"*       Root Mean Squared Error:      {metrics.RootMeanSquaredError:#.##}");
+        }
+        private static void TestSinglePrediction(MLContext mlContext, ITransformer model)
+        {
+            var predictionFunction = mlContext.Model.CreatePredictionEngine<YearWithValue, Output>(model);
+            
+            var yearwithvalue = new YearWithValue(2015, 10, "test");
+            var prediction = predictionFunction.Predict(yearwithvalue);
 
-            //learners
-            //
-            var llr = new List<Learner>();
-            var msgd = Learner.SGDLearner(network.Parameters(), lr);
-            llr.Add(msgd);
-
-            //trainer
-            var trainer = Trainer.CreateTrainer(network, loss, eval, llr);
-            //
-            return trainer;
+            Console.WriteLine(prediction.output);
         }
         private  Function createLRModel(Variable x, DeviceDescriptor device)
         {

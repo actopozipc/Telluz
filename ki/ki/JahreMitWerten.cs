@@ -26,13 +26,13 @@ namespace ki
         }
         public YearWithValue(double y, decimal v)
         {
-            Year = float.Parse(y.ToString());
-            Value = float.Parse(v.ToString());
+            Year = (float)y;
+            Value = (float)v;
         }
         public YearWithValue(double y, decimal v, string n)
         {
-            Year = float.Parse(y.ToString());
-            Value = float.Parse(v.ToString());
+            Year = (float)y;
+            Value = (float)v;
             Name = n;
         }
     }

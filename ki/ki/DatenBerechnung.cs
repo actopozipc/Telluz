@@ -1,8 +1,13 @@
 ﻿using CNTK;
+
+using Microsoft.ML;
+using Microsoft.ML.Trainers;
 using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -48,18 +53,18 @@ namespace ki
             categorycount = countrystats.ListWithCategoriesWithYearsAndValues.Count; //wie viele kategorien an daten für dieses land existieren
             List<CategoriesWithYearsAndValues> CategorysWithFutureValues = new List<CategoriesWithYearsAndValues>();
             Task<List<YearWithValue>>[] liste = new Task<List<YearWithValue>>[categorycount]; //liste damit jede kategorie in einem task abgearbeitet werden kann
-
+            List<YearWithValue> PopulationTotal = new List<YearWithValue>();
             //Arbeite jede Kategorie parallel ab
             for (int i = 0; i < categorycount; i++)
             {
 
                 //Erstelle für jede Kategorie einen Liste mit eigenen Datensätzen
                 List<YearWithValue> SingleCategoryData = new List<YearWithValue>();
-
+          
                 //Hole einzelne Datensätze für jedes Jahr heraus
                 foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                 {
-                    SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, YearWithValue.Value, countrystats.ListWithCategoriesWithYearsAndValues[i].category));
+                    SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, Convert.ToDecimal(YearWithValue.Value), countrystats.ListWithCategoriesWithYearsAndValues[i].category, YearWithValue.cat_id));
                 }
                 //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
                 //entferne deswegen 0
@@ -67,16 +72,31 @@ namespace ki
                 //Wenn es mindestens ein Jahr einer Kategorie gibt, in der der Wert nicht 0 ist
                 if (SingleCategoryData.Count > 1)
                 {
+                    
                     //Bearbeite eigenen Datensatz
                     int multi = Scale(SingleCategoryData) - 1; //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
-                    //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
-                  
-                           if (DifferentValuesCount(SingleCategoryData)>2)
+                                                               //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
+                    if (SingleCategoryData.Any(x => x.cat_id == 4))
+                    {
+                        PopulationTotal = SingleCategoryData;
+                        Console.WriteLine();
+                    }
+                    if (DifferentValuesCount(SingleCategoryData)>2)
                            {
                         //linear train
                         liste[i] = Task<List<YearWithValue>>.Run(() =>
                         {
-                            return TrainLinear(SingleCategoryData, 2030, multi);
+                            if (SingleCategoryData.Any(x=>x.cat_id > 38 && x.cat_id <45 ))
+                            {
+                                return TrainLinearMoreInputs(new List<List<YearWithValue>>() {SingleCategoryData, PopulationTotal }, 2030, multi);
+                            }
+                            else
+                            {
+                                
+                                return TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                            }
+                           
+                           // 
                         });
                            }
                            else
@@ -169,13 +189,14 @@ namespace ki
             }
 
         }
-        private List<YearWithValue> TrainLinear(List<YearWithValue> KnownValues, int FutureYear, int multi)
+        private List<YearWithValue> TrainLinearOneOutput(List<YearWithValue> KnownValues, int FutureYear, int multi)
         {
+
             var device = DeviceDescriptor.UseDefaultDevice();
-            //Step 2: define values, and variables
-            Variable x = Variable.InputVariable(new int[] { 1 }, DataType.Float, "input");
-            Variable y = Variable.InputVariable(new int[] { 1 }, DataType.Float, "output");
-            //Step 2: define training data set from table above
+            ////Step 2: define values, and variables
+            Variable x = Variable.InputVariable(new NDShape(1,1), DataType.Float, "input");
+            Variable y = Variable.InputVariable(new NDShape(1, 1), DataType.Float, "output");
+            ////Step 2: define training data set from table above
             float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
             List<double> temp = new List<double>();
             foreach (var item in inputs)
@@ -186,18 +207,18 @@ namespace ki
             inputs = input.getAlleJahreNormiert();
             float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
             //Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
-         
-            var xValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(inputs,20, input.step), device);
+
+            var xValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(inputs, 20, input.step), device);
             var yValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(outputs, 20, input.step), device);
-            //Step 3: create linear regression model
+            ////Step 3: create linear regression model
             var lr = createLRModel(x, device);
-            //Network model contains only two parameters b and w, so we query
-            //the model in order to get parameter values
+            ////Network model contains only two parameters b and w, so we query
+            ////the model in order to get parameter values
             var paramValues = lr.Inputs.Where(z => z.IsParameter).ToList();
             var totalParameters = paramValues.Sum(c => c.Shape.TotalSize);
-            //Step 4: create trainer
+            ////Step 4: create trainer
             var trainer = createTrainer(lr, y);
-            //Ştep 5: training
+            ////Ştep 5: training
             double b = 0, w = 0;
             int max = 20000;
             for (int i = 1; i <= max; i++)
@@ -229,10 +250,10 @@ namespace ki
                     Console.WriteLine($" ");
                 }
             }
-        
+
             double j = KnownValues.Max(i => i.Year);
 
-            if (j<FutureYear)
+            if (j < FutureYear)
             {
                 float i = inputs.Max();
 
@@ -252,16 +273,244 @@ namespace ki
                     i = inputtemp.Max();
 
                 }
-                 
-            
-    
+
+
+
             }
             return KnownValues;
+        }
+        public enum Activation
+        {
+            None,
+            ReLU,
+            Sigmoid,
+            Tanh
+        }
+        private List<YearWithValue> TrainLinearMoreInputs(List<List<YearWithValue>> ListWithKnownValues, int FutureYear, int multi)
+        {
+            var device = DeviceDescriptor.UseDefaultDevice();
+          
+
+            //Network definition
+            //Inputs sind Werte jeder Liste + das Jahr, zB wenn Liste 1 im Jahr 2015 den Wert 3 und Liste 2 den Wert 12 hat, wird der Input 2015, 3 und der Output 12 sein
+            int InputsCount = ListWithKnownValues.Count; //anzahl der input parameter
+            int OutputsCount = 1; //wie viele outputs raus kommen
+            int numHiddenLayers = 1; //anzahl der hidden layer
+            int hidenLayerDim = 6; //wie viele "knoten" der hidden layer hat
+          
+
+            //load data in to memory
+            var dataSet = LoadData(ListWithKnownValues[0], ListWithKnownValues[1], InputsCount, OutputsCount);
+
+            // build a NN model
+            //define input and output variable
+            var xValues = Value.CreateBatch<float>(new NDShape(1, InputsCount), dataSet.Item1, device);
+            var yValues = Value.CreateBatch<float>(new NDShape(1, OutputsCount), dataSet.Item2, device);
+
+            // build a NN model
+            //define input and output variable and connecting to the stream configuration
+            var feature = Variable.InputVariable(new NDShape(1, InputsCount), DataType.Float);
+            var label = Variable.InputVariable(new NDShape(1, OutputsCount), DataType.Float);
+
+            //Combine variables and data in to Dictionary for the training
+            var dic = new Dictionary<Variable, Value>();
+            dic.Add(feature, xValues);
+            dic.Add(label, yValues);
+
+            //Build simple Feed Froward Neural Network model
+            // var ffnn_model = CreateMLPClassifier(device, numOutputClasses, hidenLayerDim, feature, classifierName);
+            var ffnn_model = createFFNN(feature, numHiddenLayers, hidenLayerDim, OutputsCount, Activation.Tanh, "IrisNNModel", device);
+
+            //Loss and error functions definition
+            var trainingLoss = CNTKLib.CrossEntropyWithSoftmax(new Variable(ffnn_model), label, "lossFunction");
+            var classError = CNTKLib.ClassificationError(new Variable(ffnn_model), label, "classificationError");
+
+            // set learning rate for the network
+            var learningRatePerSample = new TrainingParameterScheduleDouble(0.001125, 1);
+
+            //define learners for the NN model
+            var ll = Learner.SGDLearner(ffnn_model.Parameters(), learningRatePerSample);
+
+            //define trainer based on ffnn_model, loss and error functions , and SGD learner
+            var trainer = Trainer.CreateTrainer(ffnn_model, trainingLoss, classError, new Learner[] { ll });
+
+            //Preparation for the iterative learning process
+            //used 800 epochs/iterations. Batch size will be the same as sample size since the data set is small
+            int epochs = 800;
+            int i = 0;
+            while (epochs > -1)
+            {
+
+                trainer.TrainMinibatch(dic, device);
+
+                //print progress
+                printTrainingProgress(trainer, i++, 50);
+
+                //
+                epochs--;
+            }
+            //Summary of training
+            double acc = Math.Round((1.0 - trainer.PreviousMinibatchEvaluationAverage()) * 100, 2);
+           
+            Console.WriteLine($"------TRAINING SUMMARY--------");
+            Console.WriteLine($"The model trained with the accuracy {acc}%");
+            return new List<YearWithValue>();
+          //  return KnownValues;
+        }
+        /// <summary>
+        /// Gibt eine Tulpe mit Inputs und Outputs zurück
+        /// </summary>
+        /// <param name="ListOfListOfYearWithValue">Liste mit Listen von Inputs und Outputs</param>
+        /// <param name="InputNumber">Anzahl Inputs</param>
+        /// <param name="OutputNumber">Anzahl Outputs</param>
+        /// <returns></returns>
+        static (float[], float[]) LoadData(List<YearWithValue> InputList, List<YearWithValue> OutputList,  int InputNumber, int OutputNumber)
+        {
+            var features = new List<float>();
+            var label = new List<float>();
+            //Überprüfe, ob beide Kategorien gleich viele Einträge haben
+            if (InputList.Count != OutputList.Count)
+            {
+                List<YearWithValue> NewInput;
+                List<YearWithValue> NewOutput;
+
+                //Meier
+              
+                //TODO: Methode schreiben die Listen so cuttet dass beide in den gleichen Jahren einen Eitnrag haben
+                if (InputList.Count > OutputList.Count)
+                {
+                    var result = OutputList.Join(InputList, element1 => element1.Year, element2 => element2.Year, (element1, element2) => element1);
+                    //for (int i = 0; i < InputList.Count; i++)
+                    //{
+                    //    var item = InputList[i];
+                    //    if (OutputList.Any(x => x.Year == item.Year))
+                    //    {
+                    //        continue;
+                    //    }
+                    //    else
+                    //    {
+                    //        InputList.Remove(item);
+                    //    }
+                    //}
+                }
+
+                else
+                {
+                    var result = InputList.Join(OutputList, element1 => element1.Year, element2 => element2.Year, (element1, element2) => element1);
+                    //for (int i = 0; i < OutputList.Count; i++)
+                    //{
+                    //    var item = OutputList[i];
+                    //    if (InputList.Any(x => x.Year == item.Year))
+                    //    {
+                    //        continue;
+                    //    }
+                    //    else
+                    //    {
+                    //        OutputList.Remove(item);
+                    //    }
+                    //}
+                }
+                LoadData(InputList, OutputList, InputNumber, OutputNumber);
+            }
+            else
+            {
+                var length = InputList.Count;
+                
+                //Für jedes Element in den beiden Listen
+                for (int i = 0; i < length; i++)
+                {
+                    float[] input = new float[InputNumber];
+                    for (int j = 0; j < InputNumber-1; j++)
+                    {
+                        input[j] = InputList[i].Value;
+                        input[j + 1] = InputList[i].Year;
+                    }
+                    float[] output = new float[OutputNumber];
+                    for (int k = 0; k < OutputNumber; k++)
+                    {
+                        output[k] = OutputList[i].Value;
+                    }
+                    features.AddRange(input);
+                    label.AddRange(output);
+                }
+               
+            }
+            return (features.ToArray(), label.ToArray());
+
+
+
+
+
+
+        }
+        private static void printTrainingProgress(Trainer trainer, int minibatchIdx, int outputFrequencyInMinibatches)
+        {
+            if ((minibatchIdx % outputFrequencyInMinibatches) == 0 && trainer.PreviousMinibatchSampleCount() != 0)
+            {
+                float trainLossValue = (float)trainer.PreviousMinibatchLossAverage();
+                float evaluationValue = (float)trainer.PreviousMinibatchEvaluationAverage();
+                Console.WriteLine($"Minibatch: {minibatchIdx} CrossEntropyLoss = {trainLossValue}, EvaluationCriterion = {evaluationValue}");
+            }
+        }
+        private Function createFFNN(Variable input, int hiddenLayerCount, int hiddenDim, int outputDim, Activation activation, string modelName, DeviceDescriptor device)
+        {
+            //First the parameters initialization must be performed
+            var glorotInit = CNTKLib.GlorotUniformInitializer(
+                    CNTKLib.DefaultParamInitScale,
+                    CNTKLib.SentinelValueForInferParamInitRank,
+                    CNTKLib.SentinelValueForInferParamInitRank, 1);
+
+            //hidden layers creation
+            //first hidden layer
+            Function h = simpleLayer(input, hiddenDim, device);
+            h = applyActivationFunction(h, activation);
+            for (int i = 1; i < hiddenLayerCount; i++)
+            {
+                h = simpleLayer(h, hiddenDim, device);
+                h = applyActivationFunction(h, activation);
+            }
+            //the last action is creation of the output layer
+            var r = simpleLayer(h, outputDim, device);
+            r.SetName(modelName);
+            return r;
+        }
+        private static Function applyActivationFunction(Function layer, Activation actFun)
+        {
+            switch (actFun)
+            {
+                default:
+                case Activation.None:
+                    return layer;
+                case Activation.ReLU:
+                    return CNTKLib.ReLU(layer);
+                case Activation.Sigmoid:
+                    return CNTKLib.Sigmoid(layer);
+                case Activation.Tanh:
+                    return CNTKLib.Tanh(layer);
+            }
+        }
+        private static Function simpleLayer(Function input, int outputDim, DeviceDescriptor device)
+        {
+            //prepare default parameters values
+            var glorotInit = CNTKLib.GlorotUniformInitializer(
+                    CNTKLib.DefaultParamInitScale,
+                    CNTKLib.SentinelValueForInferParamInitRank,
+                    CNTKLib.SentinelValueForInferParamInitRank, 1);
+
+            //
+            var var = (Variable)input;
+            var shape = new int[] { outputDim, var.Shape[0] };
+            var weightParam = new Parameter(shape, DataType.Float, glorotInit, device, "w");
+            var biasParam = new Parameter(new NDShape(1, outputDim), 0, device, "b");
+
+
+            return CNTKLib.Times(weightParam, input) + biasParam;
+
         }
         public Trainer createTrainer(Function network, Variable target)
         {
             //learning rate
-            var lrate = 0.0082;
+            var lrate = 0.082;
             var lr = new TrainingParameterScheduleDouble(lrate);
             //network parameters
             var zParams = new ParameterVector(network.Parameters().ToList());
@@ -280,6 +529,28 @@ namespace ki
             var trainer = Trainer.CreateTrainer(network, loss, eval, llr);
             //
             return trainer;
+        }
+        private static void Evaluate(MLContext mlContext, ITransformer model, List<YearWithValue> list)
+        {
+            IDataView data = mlContext.Data.LoadFromEnumerable<YearWithValue>(list);
+            var predictions = model.Transform(data);
+            var metrics = mlContext.Regression.Evaluate(predictions, "Label", "Score");
+            
+            Console.WriteLine($"*       RSquared Score:      {metrics.RSquared:0.##}");
+            
+            Console.WriteLine($"*       Root Mean Squared Error:      {metrics.RootMeanSquaredError:#.##}");
+        }
+        private static void TestSinglePrediction(MLContext mlContext, ITransformer model)
+        {
+           //var predictionFunction = mlContext.Model.CreatePredictionEngine<YearWithValue, Output>(model);
+            var yearwithvalue = new YearWithValue(2016, 10);
+            var prediction = mlContext.Model.CreatePredictionEngine<YearWithValue, Output>(model).Predict(yearwithvalue);
+            
+            Console.WriteLine(prediction.output); //is zero
+             yearwithvalue = new YearWithValue(2017, 10);
+             prediction = mlContext.Model.CreatePredictionEngine<YearWithValue, Output>(model).Predict(yearwithvalue);
+
+            Console.WriteLine(prediction.output); //is zero
         }
         private  Function createLRModel(Variable x, DeviceDescriptor device)
         {

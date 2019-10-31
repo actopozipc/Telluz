@@ -24,7 +24,8 @@ namespace ki{
                 {
                     category = item
                 };
-                command.CommandText = $"SELECT year, ROUND(values, 15) FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
+                command.CommandText = $"SELECT year, ROUND(values, 15), c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
+                Console.WriteLine(command.CommandText);
                 using (NpgsqlDataReader reader = command.ExecuteReader())
                 {
 
@@ -33,7 +34,8 @@ namespace ki{
                     {
                         int tempy = (int)reader["year"];
                         decimal tempv = (decimal)reader["round"];
-                        temp.Add(new YearWithValue(tempy, tempv, item));
+                        int cat = (int)reader["cat_id"];
+                        temp.Add(new YearWithValue(tempy, tempv, item, cat));
                     }
                     kmjw.YearsWithValues = temp;
                     keyValuePairs.Add(kmjw);

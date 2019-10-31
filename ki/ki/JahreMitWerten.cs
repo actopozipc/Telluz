@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using Microsoft.ML.Data;
 namespace ki
 {
     /// <summary>
@@ -14,23 +14,34 @@ namespace ki
     /// </summary>
     class YearWithValue
     {
-        public double Year { get; set; } //jahr
-        public decimal Value { get; set; } //wert
+       [LoadColumn(0)]
+        public float Year { get; set; } //jahr
+      [LoadColumn(1)]
+        public float Value { get; set; } //wert
+   
         public string Name { get; set; } //macht debugging einfach, fick auf arbeitsspeicher
+        public int cat_id { get; set; }
         public YearWithValue()
         {
 
         }
         public YearWithValue(double y, decimal v)
         {
-            Year = y;
-            Value = v;
+            Year = (float)y;
+            Value = (float)v;
         }
         public YearWithValue(double y, decimal v, string n)
         {
-            Year = y;
-            Value = v;
+            Year = (float)y;
+            Value = (float)v;
             Name = n;
+        }
+        public YearWithValue(double y, decimal v, string n, int c)
+        {
+            Year = (float)y;
+            Value = (float)v;
+            Name = n;
+            cat_id = c;
         }
     }
 }

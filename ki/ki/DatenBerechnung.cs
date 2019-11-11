@@ -88,7 +88,8 @@ namespace ki
                         {
                             if (SingleCategoryData.Any(x=>x.cat_id > 38 && x.cat_id <45 ))
                             {
-                                return TrainLinearMoreInputs(new List<List<YearWithValue>>() {SingleCategoryData, PopulationTotal }, 2030, multi);
+                                return TrainLinearMoreInputsMLNET(SingleCategoryData, PopulationTotal, 2030);
+                              
                             }
                             else
                             {
@@ -279,6 +280,58 @@ namespace ki
             }
             return KnownValues;
         }
+        private List<YearWithValue> TrainLinearMoreInputsMLNET(List<YearWithValue> ListWithCO, List<YearWithValue> Population, int FutureYear)
+        {
+            MLContext mlContext = new MLContext(seed: 0);
+            List<TwoInputRegressionModel> inputs = new List<TwoInputRegressionModel>();
+            foreach (var JahrMitCO in ListWithCO)
+            {
+                float tempyear = JahrMitCO.Year;
+                foreach (var JahrMitPopulation in Population)
+                {
+                    if (JahrMitPopulation.Year == tempyear)
+                    {
+                        inputs.Add(new TwoInputRegressionModel() { Year = tempyear, Population = JahrMitPopulation.Value, Co2 = JahrMitCO.Value });
+                    }
+                }
+            }
+            var model = Train(mlContext, inputs);
+            TestSinglePrediction(mlContext, model);
+            return new List<YearWithValue>();
+        }
+        
+        public static ITransformer Train(MLContext mlContext, List<TwoInputRegressionModel> inputs)
+        {
+            // <Snippet6>
+            IDataView dataView = mlContext.Data.LoadFromEnumerable<TwoInputRegressionModel>(inputs);
+            // </Snippet6>
+
+            // <Snippet7>
+            var pipeline = mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: "Co2")
+                    // </Snippet7>
+                    // <Snippet8>
+
+                    // </Snippet8>
+                    // <Snippet9>
+                    .Append(mlContext.Transforms.Concatenate("Features", "Year", "Population"))
+                    // </Snippet9>
+                    // <Snippet10>
+                    .Append(mlContext.Regression.Trainers.FastTree());
+            // </Snippet10>
+
+
+            Console.WriteLine("=============== Create and Train the Model ===============");
+
+            // <Snippet11>
+            var model = pipeline.Fit(dataView);
+            // </Snippet11>
+
+            Console.WriteLine("=============== End of training ===============");
+            Console.WriteLine();
+            // <Snippet12>
+            return model;
+            // </Snippet12>
+        }
         public enum Activation
         {
             None,
@@ -438,10 +491,6 @@ namespace ki
             return (features.ToArray(), label.ToArray());
 
 
-
-
-
-
         }
         private static void printTrainingProgress(Trainer trainer, int minibatchIdx, int outputFrequencyInMinibatches)
         {
@@ -542,15 +591,10 @@ namespace ki
         }
         private static void TestSinglePrediction(MLContext mlContext, ITransformer model)
         {
-           //var predictionFunction = mlContext.Model.CreatePredictionEngine<YearWithValue, Output>(model);
-            var yearwithvalue = new YearWithValue(2016, 10);
-            var prediction = mlContext.Model.CreatePredictionEngine<YearWithValue, Output>(model).Predict(yearwithvalue);
-            
-            Console.WriteLine(prediction.output); //is zero
-             yearwithvalue = new YearWithValue(2017, 10);
-             prediction = mlContext.Model.CreatePredictionEngine<YearWithValue, Output>(model).Predict(yearwithvalue);
-
-            Console.WriteLine(prediction.output); //is zero
+            var predictionFunction = mlContext.Model.CreatePredictionEngine<TwoInputRegressionModel, TwoInputRegressionPrediction>(model);
+            var test = new TwoInputRegressionModel() {Year = 2017, Population = 3.75f, Co2 = 0 };
+            var prediction = predictionFunction.Predict(test);
+            Console.WriteLine(prediction.Co2);
         }
         private  Function createLRModel(Variable x, DeviceDescriptor device)
         {

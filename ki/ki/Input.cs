@@ -9,7 +9,7 @@ namespace ki
     class Input
     {
         public Dictionary<float, float> input = new Dictionary<float, float>();
-        public Output output;
+       // public Output output;
         private Dictionary<double, double> jahrMitNormierung = new Dictionary<double, double>();
         public double step { get; set; }
         public void Add(double jahr, double normiert)

@@ -1,20 +1,20 @@
-using Npgsql;
+using System.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ki{
     class DB{
-         static NpgsqlConnection connection = null;
+         static SqlConnection connection = null;
 
          public DB(string cs)
          {
-            connection = new NpgsqlConnection(cs);
+            connection = new SqlConnection(cs);
             connection.Open();
          }
           public async Task<List<CategoriesWithYearsAndValues>> GetCategoriesWithValuesAndYearsAsync(string country, List<int> kategorieIDs)
         {
-            NpgsqlCommand command = connection.CreateCommand();
+            SqlCommand command = connection.CreateCommand();
             List<string> vs = GetItems(kategorieIDs);
             List<CategoriesWithYearsAndValues> keyValuePairs = new List<CategoriesWithYearsAndValues>();
             foreach (var item in vs)
@@ -24,18 +24,19 @@ namespace ki{
                 {
                     category = item
                 };
-                command.CommandText = $"SELECT year, ROUND(values, 15), c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
+                command.CommandText = $"SELECT year, ROUND(value,5), c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
                 Console.WriteLine(command.CommandText);
-                using (NpgsqlDataReader reader = command.ExecuteReader())
+                using (SqlDataReader reader = command.ExecuteReader())
                 {
 
                     List<YearWithValue> temp = new List<YearWithValue>();
                     while (await reader.ReadAsync()) //fraglich ob es nicht eine bessere Methode gibt
                     {
                         int tempy = (int)reader["year"];
-                        decimal tempv = (decimal)reader["round"];
+                        var tempv = reader["value"];
                         int cat = (int)reader["cat_id"];
-                        temp.Add(new YearWithValue(tempy, tempv, item, cat));
+                        Console.WriteLine(tempv);
+                        temp.Add(new YearWithValue(tempy, Convert.ToDecimal(tempv.ToString().Substring(0,15)), item, cat));
                     }
                     kmjw.YearsWithValues = temp;
                     keyValuePairs.Add(kmjw);
@@ -47,10 +48,10 @@ namespace ki{
         }
         private List<string> GetItems(List<int> catids)
         {
-            NpgsqlCommand command = connection.CreateCommand();
+            SqlCommand command = connection.CreateCommand();
             if (catids.Count == 0)
             {
-                command.CommandText = "SELECT name FROM category ORDER BY category;";
+                command.CommandText = "SELECT name FROM category ORDER BY cat_id;";
             }
             else
             {
@@ -59,11 +60,11 @@ namespace ki{
                 {
                     statementConditions.Add("cat_id=" + item);
                 }
-                command.CommandText = ConcatSQLConditions(statementConditions, "SELECT name FROM category") + " ORDER BY category;";
+                command.CommandText = ConcatSQLConditions(statementConditions, "SELECT name FROM category") + " ORDER BY cat_id;";
             }
 
             List<string> disziplin = new List<string>();
-            using (NpgsqlDataReader reader = command.ExecuteReader())
+            using (SqlDataReader reader = command.ExecuteReader())
             {
                 while (reader.Read()) //fraglich ob es nicht eine bessere Methode gibt
                 {
@@ -74,7 +75,7 @@ namespace ki{
         }
         public List<string> GetCountries(List<int> coaids)
         {
-            NpgsqlCommand command = connection.CreateCommand();
+            SqlCommand command = connection.CreateCommand();
             if (coaids.Count == 0)
             {
                 command.CommandText = "SELECT name FROM country_or_area;";
@@ -93,7 +94,7 @@ namespace ki{
             }
 
             List<string> land = new List<string>();
-            using (NpgsqlDataReader reader = command.ExecuteReader())
+            using (SqlDataReader reader = command.ExecuteReader())
             {
                 while (reader.Read()) //fraglich ob es nicht eine bessere Methode gibt
                 {

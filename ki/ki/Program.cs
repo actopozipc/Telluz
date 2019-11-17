@@ -17,6 +17,7 @@ namespace ki
             Console.WriteLine("Gestartet um " +DateTime.Now);
             Stopwatch sw = new Stopwatch();
             sw.Start();
+       
             var liste =  Task.Run(async () =>
             {
                return await AsynchroneMainMethodenWerdenErstAbCsharp7ImplementiertAsync();
@@ -46,7 +47,7 @@ namespace ki
           
             CalculateData calc = new CalculateData();
           
-             var liste = await calc.GenerateForEachCountryAsync(new List<int>() {11,3 }, new List<int>() { 4,41 });
+             var liste = await calc.GenerateForEachCountryAsync(new List<int>() {11,3 }, new List<int>() { 4,40 });
             return liste;
             
         }

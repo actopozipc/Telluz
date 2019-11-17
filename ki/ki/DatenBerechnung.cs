@@ -2,7 +2,6 @@
 
 using Microsoft.ML;
 using Microsoft.ML.Trainers;
-using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -296,6 +295,10 @@ namespace ki
                 }
             }
             var model = Train(mlContext, inputs);
+            LinearRegressionModelParameters originalModelParameters = ((ISingleFeaturePredictionTransformer<object>)model).Model as LinearRegressionModelParameters;
+            
+            
+ 
             TestSinglePrediction(mlContext, model);
             return new List<YearWithValue>();
         }
@@ -305,9 +308,9 @@ namespace ki
             // <Snippet6>
             IDataView dataView = mlContext.Data.LoadFromEnumerable<TwoInputRegressionModel>(inputs);
             // </Snippet6>
-
+            IDataView trainData =  mlContext.Data.TrainTestSplit(dataView).TrainSet;
             // <Snippet7>
-            var pipeline = mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: "Co2")
+            IEstimator<ITransformer> pipeline = mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: "Co2")
                     // </Snippet7>
                     // <Snippet8>
 
@@ -319,13 +322,14 @@ namespace ki
                     .Append(mlContext.Regression.Trainers.FastTree());
             // </Snippet10>
 
+         
 
             Console.WriteLine("=============== Create and Train the Model ===============");
 
             // <Snippet11>
-            var model = pipeline.Fit(dataView);
+            ITransformer model = pipeline.Fit(trainData);
             // </Snippet11>
-
+           
             Console.WriteLine("=============== End of training ===============");
             Console.WriteLine();
             // <Snippet12>

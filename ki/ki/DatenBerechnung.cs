@@ -32,7 +32,7 @@ namespace ki
                 await Task.Run(async () =>
                  {
                      Countrystats c = new Countrystats();
-                     c.Country = laender[i];
+                     c.Country = new Country(laender[i]);
                      c.ListWithCategoriesWithYearsAndValues = await GenerateAsync(laender[i], kategorienIDs);
                      countrystats.Add(c);
 
@@ -46,7 +46,7 @@ namespace ki
         {
 
             Countrystats countrystats = new Countrystats(); //Klasse für alle Kategorien und deren Werte per Jahr
-            countrystats.Country = country; //Land zu dem die Kategorien mit Werte gehören
+            countrystats.Country = new Country(country); //Land zu dem die Kategorien mit Werte gehören
             //in der Datenbank sind derzeit nur Werte für Österreich drin
             countrystats.ListWithCategoriesWithYearsAndValues = await dB.GetCategoriesWithValuesAndYearsAsync(country, kategorienIDs); //Werte mit Jahren
             categorycount = countrystats.ListWithCategoriesWithYearsAndValues.Count; //wie viele kategorien an daten für dieses land existieren
@@ -295,8 +295,7 @@ namespace ki
                 }
             }
             var model = Train(mlContext, inputs);
-            LinearRegressionModelParameters originalModelParameters = ((ISingleFeaturePredictionTransformer<object>)model).Model as LinearRegressionModelParameters;
-            
+
             
  
             TestSinglePrediction(mlContext, model);

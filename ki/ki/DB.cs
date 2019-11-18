@@ -24,7 +24,7 @@ namespace ki{
                 {
                     category = item
                 };
-                command.CommandText = $"SELECT year, ROUND(value,5), c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
+                command.CommandText = $"SELECT year, ROUND(value,5) AS ROUND, c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
                 Console.WriteLine(command.CommandText);
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
@@ -33,10 +33,11 @@ namespace ki{
                     while (await reader.ReadAsync()) //fraglich ob es nicht eine bessere Methode gibt
                     {
                         int tempy = (int)reader["year"];
-                        var tempv = reader["value"];
+                        var tempv = Convert.ToDecimal(reader["ROUND"].ToString());
                         int cat = (int)reader["cat_id"];
                         Console.WriteLine(tempv);
-                        temp.Add(new YearWithValue(tempy, Convert.ToDecimal(tempv.ToString().Substring(0,15)), item, cat));
+                    
+                        temp.Add(new YearWithValue(tempy, (decimal)tempv, item, cat));
                     }
                     kmjw.YearsWithValues = temp;
                     keyValuePairs.Add(kmjw);

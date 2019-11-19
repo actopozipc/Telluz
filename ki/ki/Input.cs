@@ -11,10 +11,15 @@ namespace ki
         public Dictionary<float, float> input = new Dictionary<float, float>();
        // public Output output;
         private Dictionary<double, double> jahrMitNormierung = new Dictionary<double, double>();
+        private Dictionary<double, double> wertMitNormierung = new Dictionary<double, double>();
         public double step { get; set; }
-        public void Add(double jahr, double normiert)
+        public void AddJahr(double jahr, double normiert)
         {
             jahrMitNormierung.Add(jahr, normiert);
+        }
+        public void AddWert(double wert, double normiert)
+        {
+            wertMitNormierung.Add(wert, normiert);
         }
         public double getNormierterWert(double jahr)
         {
@@ -29,6 +34,15 @@ namespace ki
                 array[i] = float.Parse(jahrMitNormierung.ElementAt(i).Value.ToString());
             }
             return array;
+        }
+        public float[] getAlleWerteNormiert()
+        {
+            float[] werte = new float[wertMitNormierung.Count];
+            for (int i = 0; i < wertMitNormierung.Count; i++)
+            {
+                werte[i] = float.Parse(wertMitNormierung.ElementAt(i).Value.ToString());
+            }
+            return werte;
         }
         public Dictionary<double,double> GetPairs()
         {

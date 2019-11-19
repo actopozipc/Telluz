@@ -17,7 +17,7 @@ namespace ki
        [LoadColumn(0)]
         public float Year { get; set; } //jahr
       [LoadColumn(1)]
-        public float Value { get; set; } //wert
+        public Wert Value { get; set; } //wert
    
         public string Name { get; set; } //macht debugging einfach, fick auf arbeitsspeicher
         public int cat_id { get; set; }
@@ -25,21 +25,21 @@ namespace ki
         {
 
         }
-        public YearWithValue(double y, decimal v)
+        public YearWithValue(double y, Wert v)
         {
             Year = (float)y;
-            Value = (float)v;
+            Value = v;
         }
-        public YearWithValue(double y, decimal v, string n)
+        public YearWithValue(double y, Wert v, string n)
         {
             Year = (float)y;
-            Value = (float)v;
+            Value = v;
             Name = n;
         }
-        public YearWithValue(double y, decimal v, string n, int c)
+        public YearWithValue(double y, Wert v, string n, int c)
         {
             Year = (float)y;
-            Value = (float)v;
+            Value = v;
             Name = n;
             cat_id = c;
         }

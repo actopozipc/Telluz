@@ -63,7 +63,7 @@ namespace ki
                 //Hole einzelne Datensätze für jedes Jahr heraus
                 foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                 {
-                    SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, Convert.ToDecimal(YearWithValue.Value), countrystats.ListWithCategoriesWithYearsAndValues[i].category, YearWithValue.cat_id));
+                    SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, new Wert(Convert.ToDecimal(YearWithValue.Value.value)), countrystats.ListWithCategoriesWithYearsAndValues[i].category, YearWithValue.cat_id));
                 }
                 //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
                 //entferne deswegen 0
@@ -187,7 +187,7 @@ namespace ki
             {
                 hiddenNeuron1.inputs = input.getNormierterWert(j) + input.step;
                 outputNeuron.inputs = hiddenNeuron1.output;
-                KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), Convert.ToDecimal(outputNeuron.output * Convert.ToDouble(Math.Pow(10, multi)))));
+                KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), new Wert((float)(outputNeuron.output * Convert.ToDouble(Math.Pow(10, multi))),true)));
                 return TrainSigmoid(KnownValues, FutureYear, multi);
             }
             //wenn alle Jahre bekannt sind, returne die Liste
@@ -215,9 +215,15 @@ namespace ki
             inputs = input.getAlleJahreNormiert();
             float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
             //Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
-
-            var xValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(inputs, 20, input.step), device);
-            var yValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(outputs, 20, input.step), device);
+            float[] outputsnormiert = new float[outputs.Count()];
+            int WertZumDividieren = outputs.Max().ToString().Length + 1;
+            for (int i = 0; i < outputs.Length; i++)
+            {
+                outputsnormiert[i] = outputs[i] / WertZumDividieren;
+            }
+            //Werte normiert lassen, sonst stackoverflow :>
+            var xValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(inputs, inputs.Length, input.step), device);
+            var yValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(outputsnormiert,outputs.Length, input.step), device);
             ////Step 3: create linear regression model
             var lr = createLRModel(x, device);
             ////Network model contains only two parameters b and w, so we query
@@ -269,7 +275,7 @@ namespace ki
                 {
                     j++;
 
-                    KnownValues.Add(new YearWithValue(j, (Convert.ToDecimal(w * i + b))));
+                    KnownValues.Add(new YearWithValue(j, new Wert((Convert.ToDecimal(w * i + b) * WertZumDividieren),true)));
                     float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
                     List<double> fuckinghelpme = new List<double>();
                     foreach (var item in inputtemp)
@@ -298,7 +304,7 @@ namespace ki
                 {
                     if (JahrMitPopulation.Year == tempyear)
                     {
-                        inputs.Add(new TwoInputRegressionModel() { Year = tempyear, Population = JahrMitPopulation.Value, Co2 = JahrMitCO.Value });
+                        inputs.Add(new TwoInputRegressionModel() { Year = tempyear, Population = JahrMitPopulation.Value.value, Co2 = JahrMitCO.Value.value });
                     }
                 }
             }
@@ -311,7 +317,7 @@ namespace ki
                     j++;
                     if (Population.Any(x=>x.Year == j))
                     {
-                      ListWithCO.Add(PredictCo2(mlContext, model, (float)j, Population.First(x => x.Year == j).Value));
+                      ListWithCO.Add(PredictCo2(mlContext, model, (float)j, Population.First(x => x.Year == j).Value.value));
                    return TrainLinearMoreInputsMLNET(ListWithCO, Population, FutureYear);
                     }
                     else
@@ -450,8 +456,7 @@ namespace ki
             //Überprüfe, ob beide Kategorien gleich viele Einträge haben
             if (InputList.Count != OutputList.Count)
             {
-                List<YearWithValue> NewInput;
-                List<YearWithValue> NewOutput;
+              
 
                 //Meier
               
@@ -501,13 +506,13 @@ namespace ki
                     float[] input = new float[InputNumber];
                     for (int j = 0; j < InputNumber-1; j++)
                     {
-                        input[j] = InputList[i].Value;
+                        input[j] = InputList[i].Value.value;
                         input[j + 1] = InputList[i].Year;
                     }
                     float[] output = new float[OutputNumber];
                     for (int k = 0; k < OutputNumber; k++)
                     {
-                        output[k] = OutputList[i].Value;
+                        output[k] = OutputList[i].Value.value;
                     }
                     features.AddRange(input);
                     label.AddRange(output);
@@ -620,7 +625,7 @@ namespace ki
             var predictionFunction = mlContext.Model.CreatePredictionEngine<TwoInputRegressionModel, TwoInputRegressionPrediction>(model);
             var test = new TwoInputRegressionModel() {Year = y, Population = p};
             var prediction = predictionFunction.Predict(test);
-            return new YearWithValue(y, Convert.ToDecimal(prediction.Co2));
+            return new YearWithValue(y, new Wert(prediction.Co2,true));
         }
         private  Function createLRModel(Variable x, DeviceDescriptor device)
         {
@@ -654,7 +659,7 @@ namespace ki
             double i = 0;
             foreach (var item in inputs)
             {
-                input.Add(item, i);
+                input.AddJahr(item, i);
                 i = i + step;
             }
             return input;
@@ -672,7 +677,7 @@ namespace ki
         }
         List<YearWithValue> RemoveZero(List<YearWithValue> collection)
         {
-            var temp = collection.Where(i => i.Value != 0).ToList();
+            var temp = collection.Where(i => i.Value.value != 0).ToList();
             return temp;
         }
         private int DifferentValuesCount(List<YearWithValue> values)

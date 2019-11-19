@@ -36,7 +36,7 @@ namespace ki{
                         var tempv = Convert.ToDecimal(reader["ROUND"].ToString());
                         int cat = (int)reader["cat_id"];
                     
-                        temp.Add(new YearWithValue(tempy, (decimal)tempv, item, cat));
+                        temp.Add(new YearWithValue(tempy, new Wert((decimal)tempv,false), item, cat));
                     }
                     kmjw.YearsWithValues = temp;
                     keyValuePairs.Add(kmjw);

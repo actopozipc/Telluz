@@ -6,14 +6,31 @@ using System.Threading.Tasks;
 
 namespace ki
 {
-    class Value
+    class Wert
     {
-        public decimal eigentlicherwert { get; set; }
-        public int mulitplikator { get; set; }
-        public Value(decimal e, int m)
+        public float value { get; private set; }
+        bool berechnet;
+        public Wert(float value)
         {
-            eigentlicherwert = e;
-            mulitplikator = m;
+            this.value = value;
+            berechnet = false;
+        }
+        public Wert(float value, bool berechnet)
+        {
+            this.value = value;
+            this.berechnet = berechnet;
+        }
+        //Macht vieles einfacher
+        public Wert(decimal v)
+        {
+            this.value = (float)v;
+
+        }
+        public Wert(decimal v, bool b)
+        {
+            this.value = (float)v;
+            this.berechnet = b;
+
         }
     }
 }

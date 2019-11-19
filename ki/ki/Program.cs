@@ -46,8 +46,9 @@ namespace ki
         {
           
             CalculateData calc = new CalculateData();
-          
-             var liste = await calc.GenerateForEachCountryAsync(new List<int>() {11,3 }, new List<int>() { 4,41 });
+            Random r = new Random();
+           
+             var liste = await calc.GenerateForEachCountryAsync(new List<int>() { r.Next(0,264) }, new List<int>() { 9 });
             return liste;
             
         }

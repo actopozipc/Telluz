@@ -92,8 +92,16 @@ namespace ki
                             }
                             else
                             {
-                                
-                                return TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                                if (SingleCategoryData.Any(x => x.cat_id == 4))
+                                {
+                                    PopulationTotal = TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                                    return PopulationTotal;
+                                }
+                                else
+                                {
+                                    return TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                                }
+                               
                             }
                            
                            // 
@@ -220,7 +228,7 @@ namespace ki
             var trainer = createTrainer(lr, y);
             ////Ştep 5: training
             double b = 0, w = 0;
-            int max = 20000;
+            int max = 2000;
             for (int i = 1; i <= max; i++)
             {
                 var d = new Dictionary<Variable, Value>();
@@ -232,7 +240,7 @@ namespace ki
                 var loss = trainer.PreviousMinibatchLossAverage();
                 var eval = trainer.PreviousMinibatchEvaluationAverage();
                 //
-                if (i % 2000 == 0)
+                if (i % 200 == 0)
                     Console.WriteLine($"It={i}, Loss={loss}, Eval={eval}");
 
                 if (i == max)
@@ -296,10 +304,25 @@ namespace ki
             }
             var model = Train(mlContext, inputs);
 
-            
- 
-            TestSinglePrediction(mlContext, model);
-            return new List<YearWithValue>();
+            double j = inputs.Max(i => i.Year);
+            if (j<FutureYear)
+            {
+                
+                    j++;
+                    if (Population.Any(x=>x.Year == j))
+                    {
+                      ListWithCO.Add(PredictCo2(mlContext, model, (float)j, Population.First(x => x.Year == j).Value));
+                   return TrainLinearMoreInputsMLNET(ListWithCO, Population, FutureYear);
+                    }
+                    else
+                    {
+                        //Was tun falls keine Population in dem Jahr bekannt ist
+                    }
+                 
+                
+            }
+
+            return ListWithCO;
         }
         
         public static ITransformer Train(MLContext mlContext, List<TwoInputRegressionModel> inputs)
@@ -592,12 +615,12 @@ namespace ki
             
             Console.WriteLine($"*       Root Mean Squared Error:      {metrics.RootMeanSquaredError:#.##}");
         }
-        private static void TestSinglePrediction(MLContext mlContext, ITransformer model)
+        private static YearWithValue PredictCo2(MLContext mlContext, ITransformer model, float y, float p)
         {
             var predictionFunction = mlContext.Model.CreatePredictionEngine<TwoInputRegressionModel, TwoInputRegressionPrediction>(model);
-            var test = new TwoInputRegressionModel() {Year = 2017, Population = 3.75f, Co2 = 0 };
+            var test = new TwoInputRegressionModel() {Year = y, Population = p};
             var prediction = predictionFunction.Predict(test);
-            Console.WriteLine(prediction.Co2);
+            return new YearWithValue(y, Convert.ToDecimal(prediction.Co2));
         }
         private  Function createLRModel(Variable x, DeviceDescriptor device)
         {

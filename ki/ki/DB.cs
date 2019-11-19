@@ -35,7 +35,6 @@ namespace ki{
                         int tempy = (int)reader["year"];
                         var tempv = Convert.ToDecimal(reader["ROUND"].ToString());
                         int cat = (int)reader["cat_id"];
-                        Console.WriteLine(tempv);
                     
                         temp.Add(new YearWithValue(tempy, (decimal)tempv, item, cat));
                     }

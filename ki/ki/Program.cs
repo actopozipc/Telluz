@@ -36,7 +36,7 @@ namespace ki
                 
                     foreach (var JahreMitWerten in KategorieMitJahrenUndWerten.YearsWithValues)
                     {
-                        Console.WriteLine($"{JahreMitWerten.Year} : {JahreMitWerten.Value}");
+                        Console.WriteLine($"{JahreMitWerten.Year} : {JahreMitWerten.Value.value}");
                     }
                 }
             }
@@ -48,7 +48,7 @@ namespace ki
             CalculateData calc = new CalculateData();
             Random r = new Random();
            
-             var liste = await calc.GenerateForEachCountryAsync(new List<int>() { r.Next(0,264) }, new List<int>() { 9 });
+             var liste = await calc.GenerateForEachCountryAsync(new List<int>() { r.Next(0,264) }, new List<int>() { 4 });
             return liste;
             
         }

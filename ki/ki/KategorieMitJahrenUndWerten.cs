@@ -36,7 +36,7 @@ namespace ki
             float[] werte = new float[count];
             for (int i = 0; i < count; i++)
             {
-                werte[i] = float.Parse(list[i].Value.ToString());
+                werte[i] = float.Parse(list[i].Value.value.ToString());
             }
             return werte;
         }

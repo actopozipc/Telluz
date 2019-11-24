@@ -149,7 +149,7 @@ namespace ki
             foreach (var YearWithValue in KnownValues)
             {
                 inputs.Add(Convert.ToDouble(YearWithValue.Year));
-                outputs.Add(Convert.ToDouble(YearWithValue.Value) / (Math.Pow(10, multi)));
+                outputs.Add(Convert.ToDouble(YearWithValue.Value.value) / (Math.Pow(10, multi)));
             }
             Input input = Standardization(inputs, FutureYear);
             Neuron hiddenNeuron1 = new Neuron();
@@ -347,7 +347,7 @@ namespace ki
                     .Append(mlContext.Transforms.Concatenate("Features", "Year", "Population"))
                     // </Snippet9>
                     // <Snippet10>
-                    .Append(mlContext.Regression.Trainers.FastTree());
+                    .Append(mlContext.Regression.Trainers.Sdca());
             // </Snippet10>
 
          
@@ -666,7 +666,7 @@ namespace ki
         }
         int Scale(List<YearWithValue> n)
         {
-            double temp = Convert.ToDouble(n.Max(i => i.Value));
+            double temp = Convert.ToDouble(n.Max(i => i.Value.value));
             int m = 1;
             while (1 <= temp)
             {

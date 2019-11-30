@@ -12,6 +12,12 @@ namespace ki{
             connection = new SqlConnection(cs);
             connection.Open();
          }
+        /// <summary>
+        /// Returnt Kategorien mit allen Jahren und Werten eines einzelnen Landes
+        /// </summary>
+        /// <param name="country">Land</param>
+        /// <param name="kategorieIDs">Liste mit Kategorien die zu dem Land gefragt werden</param>
+        /// <returns>Liste mit Kategorien mit Jahren und Werten</returns>
           public async Task<List<CategoriesWithYearsAndValues>> GetCategoriesWithValuesAndYearsAsync(string country, List<int> kategorieIDs)
         {
             SqlCommand command = connection.CreateCommand();
@@ -46,6 +52,78 @@ namespace ki{
             return keyValuePairs;
 
         }
+        public bool CheckParameters(int coaID, int catID)
+        {
+            SqlCommand command = connection.CreateCommand();
+            command.CommandText = $"SELECT COUNT(*) AS COUNT FROM output_data WHERE coa_id = {coaID} AND cat_id = {catID};";
+            using (SqlDataReader reader = command.ExecuteReader())
+            {
+                int count = (Int32)reader["COUNT"];
+                if (count>1)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+        public ParameterStorage GetParameter(int CoaID, int catID)
+        {
+            SqlCommand command = connection.CreateCommand();
+            command.CommandText = $"SELECT value FROM output_data WHERE coa_id = {CoaID} AND cat_id = {catID} ORDER BY error";
+            using (SqlDataReader reader = command.ExecuteReader())
+            {
+                string value = Convert.ToString(reader["value"]);
+                float W = 0;
+                float b = 0;
+                foreach (var parameterstring in value.Split(';'))
+                {
+                    char[] arr = parameterstring.ToCharArray();
+                    for (int i = 0; i < arr.Length-2; i++)
+                    {
+                        var c = arr[i];
+                        if (c == 'W')
+                        {
+                            W = arr[i + 2];
+                        }
+                        if (c == 'b')
+                        {
+                            b = arr[i + 2];
+                        }
+                    }
+                  
+                }
+                return new ParameterStorage(W, b);
+            }
+
+        }
+        public int GetCategoryByName(string category)
+        {
+            SqlCommand command = connection.CreateCommand();
+            command.CommandText = $"SELECT cat_id FROM category WHERE name = '{category}'; ";
+            using (SqlDataReader reader = command.ExecuteReader())
+            {
+                return (Int32)reader["cat_id"];
+            }
+        }
+        public int GetCountryByName(string name)
+        {
+            SqlCommand command = connection.CreateCommand();
+            command.CommandText = $"SELECT coa_id FROM country_or_area WHERE name = '{name}'; ";
+            using (SqlDataReader reader = command.ExecuteReader())
+            {
+                return (Int32)reader["coa_id"];
+            }
+
+        }
+      
+        /// <summary>
+        /// Returnt eine Liste mit Namen die zu den IDs einer Kategorie gehören
+        /// </summary>
+        /// <param name="catids"></param>
+        /// <returns></returns>
         private List<string> GetItems(List<int> catids)
         {
             SqlCommand command = connection.CreateCommand();
@@ -103,6 +181,7 @@ namespace ki{
             }
             return land;
         }
+        //autogeneriert sql statement
         private string ConcatSQLConditions(List<string> ids, string statement)
         {
             string temp = String.Join(" OR ", ids);

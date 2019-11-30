@@ -53,73 +53,86 @@ namespace ki
             List<CategoriesWithYearsAndValues> CategorysWithFutureValues = new List<CategoriesWithYearsAndValues>();
             Task<List<YearWithValue>>[] liste = new Task<List<YearWithValue>>[categorycount]; //liste damit jede kategorie in einem task abgearbeitet werden kann
             List<YearWithValue> PopulationTotal = new List<YearWithValue>();
+            
             //Arbeite jede Kategorie parallel ab
             for (int i = 0; i < categorycount; i++)
             {
-
-                //Erstelle für jede Kategorie einen Liste mit eigenen Datensätzen
-                List<YearWithValue> SingleCategoryData = new List<YearWithValue>();
-          
-                //Hole einzelne Datensätze für jedes Jahr heraus
-                foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
+                if (dB.CheckParameters(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category)))
                 {
-                    SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, new Wert(Convert.ToDecimal(YearWithValue.Value.value)), countrystats.ListWithCategoriesWithYearsAndValues[i].category, YearWithValue.cat_id));
-                }
-                //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
-                //entferne deswegen 0
-                SingleCategoryData = RemoveZero(SingleCategoryData);
-                //Wenn es mindestens ein Jahr einer Kategorie gibt, in der der Wert nicht 0 ist
-                if (SingleCategoryData.Count > 1)
-                {
-                    
-                    //Bearbeite eigenen Datensatz
-                    int multi = Scale(SingleCategoryData) - 1; //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
-                                                               //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
-                    if (SingleCategoryData.Any(x => x.cat_id == 4))
+                    ParameterStorage parStor = dB.GetParameter(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category));
+                    liste[i] = Task<List<YearWithValue>>.Run(() =>
                     {
-                        PopulationTotal = SingleCategoryData;
-                        Console.WriteLine();
+                        return new List<YearWithValue>();
+                    });
+                }
+                else
+                {
+
+
+                    //Erstelle für jede Kategorie einen Liste mit eigenen Datensätzen
+                    List<YearWithValue> SingleCategoryData = new List<YearWithValue>();
+
+                    //Hole einzelne Datensätze für jedes Jahr heraus
+                    foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
+                    {
+                        SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, new Wert(Convert.ToDecimal(YearWithValue.Value.value)), countrystats.ListWithCategoriesWithYearsAndValues[i].category, YearWithValue.cat_id));
                     }
-                    if (DifferentValuesCount(SingleCategoryData)>2)
-                           {
-                        //linear train
-                        liste[i] = Task<List<YearWithValue>>.Run(() =>
+                    //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
+                    //entferne deswegen 0
+                    SingleCategoryData = RemoveZero(SingleCategoryData);
+                    //Wenn es mindestens ein Jahr einer Kategorie gibt, in der der Wert nicht 0 ist
+                    if (SingleCategoryData.Count > 1)
+                    {
+
+                        //Bearbeite eigenen Datensatz
+                        int multi = Scale(SingleCategoryData) - 1; //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
+                                                                   //Erstelle Task für einzelnen Datensatz um dann auf alle zu warten
+                        if (SingleCategoryData.Any(x => x.cat_id == 4))
                         {
-                            if (SingleCategoryData.Any(x=>x.cat_id > 38 && x.cat_id <45 ))
+                            PopulationTotal = SingleCategoryData;
+                            Console.WriteLine();
+                        }
+                        if (DifferentValuesCount(SingleCategoryData) > 2)
+                        {
+                            //linear train
+                            liste[i] = Task<List<YearWithValue>>.Run(() =>
                             {
-                                return TrainLinearMoreInputsMLNET(SingleCategoryData, PopulationTotal, 2030);
-                              
-                            }
-                            else
-                            {
-                                if (SingleCategoryData.Any(x => x.cat_id == 4))
+                                if (SingleCategoryData.Any(x => x.cat_id > 38 && x.cat_id < 45))
                                 {
-                                    PopulationTotal = TrainLinearOneOutput(SingleCategoryData, 2030, multi);
-                                    return PopulationTotal;
+                                    return TrainLinearMoreInputsMLNET(SingleCategoryData, PopulationTotal, 2030);
+
                                 }
                                 else
                                 {
-                                    return TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                                    if (SingleCategoryData.Any(x => x.cat_id == 4))
+                                    {
+                                        PopulationTotal = TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                                        return PopulationTotal;
+                                    }
+                                    else
+                                    {
+                                        return TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                                    }
+
                                 }
-                               
-                            }
-                           
-                           // 
+
+                            // 
                         });
-                           }
-                           else
-                           {
-                        liste[i] = Task<List<YearWithValue>>.Run(() =>
+                        }
+                        else
                         {
-                            return TrainSigmoid(SingleCategoryData, 2030, multi);
-                        });
+                            liste[i] = Task<List<YearWithValue>>.Run(() =>
+                            {
+                                return TrainSigmoid(SingleCategoryData, 2030, multi);
+                            });
+                        }
                     }
-                }
-                //ohne dieses else gäbe es einige leere Tasks im Array -> Exception
-                //ohne if geht die KI datensätze ohne einträge durch -> Verschwendung von Rechenleistung und Zeit
-                else
-                {
-                    liste[i] = Task.Run(() => { return new List<YearWithValue>(); });
+                    //ohne dieses else gäbe es einige leere Tasks im Array -> Exception
+                    //ohne if geht die KI datensätze ohne einträge durch -> Verschwendung von Rechenleistung und Zeit
+                    else
+                    {
+                        liste[i] = Task.Run(() => { return new List<YearWithValue>(); });
+                    }
                 }
             }
             //Warte parallel bis alle Kategorien gelernt und berechnet wurden
@@ -347,7 +360,7 @@ namespace ki
                     .Append(mlContext.Transforms.Concatenate("Features", "Year", "Population"))
                     // </Snippet9>
                     // <Snippet10>
-                    .Append(mlContext.Regression.Trainers.Sdca());
+                    .Append(mlContext.Regression.Trainers.FastTree()); //Eigentlich sdca, aber dll exception
             // </Snippet10>
 
          
@@ -355,7 +368,7 @@ namespace ki
             Console.WriteLine("=============== Create and Train the Model ===============");
 
             // <Snippet11>
-            ITransformer model = pipeline.Fit(trainData);
+            ITransformer model = pipeline.Fit(dataView);
             // </Snippet11>
            
             Console.WriteLine("=============== End of training ===============");

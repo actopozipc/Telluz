@@ -9,8 +9,8 @@ namespace ki
     class ParameterStorage
     {
         public bool containsParameter;
-        float W;
-        float b;
+      public  float W;
+       public float b;
         public ParameterStorage(float W, float b)
         {
             this.W = W;
@@ -19,11 +19,11 @@ namespace ki
         }
         public ParameterStorage()
         {
-
+            containsParameter = false;
         }
-       public static ParameterStorage WithoutParameter()
+      public string GetParameterAsString()
         {
-            return new ParameterStorage() { containsParameter = false };
+            return "W=" + W.ToString() + ";" + "b=" + b.ToString() + ";";
         }
     }
 }

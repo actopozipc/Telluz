@@ -20,10 +20,10 @@ namespace ki
         const int x = 210;
         public CalculateData()
         {
-            string cs = ConfigurationManager.ConnectionStrings["klimaki"].ConnectionString;
-            dB = new DB(cs);
+            
+            dB = new DB();
         }
-        public async Task<List<Countrystats>> GenerateForEachCountryAsync(List<int> laenderIDs, List<int> kategorienIDs)
+        public async Task<List<Countrystats>> GenerateForEachCountryAsync(List<int> laenderIDs, List<int> kategorienIDs, int futureYear)
         {
             List<string> laender = dB.GetCountries(laenderIDs); //Liste mit allen Ländern
             List<Countrystats> countrystats = new List<Countrystats>();
@@ -33,7 +33,7 @@ namespace ki
                  {
                      Countrystats c = new Countrystats();
                      c.Country = new Country(laender[i]);
-                     c.ListWithCategoriesWithYearsAndValues = await GenerateAsync(laender[i], kategorienIDs);
+                     c.ListWithCategoriesWithYearsAndValues = await GenerateAsync(laender[i], kategorienIDs, futureYear);
                      countrystats.Add(c);
 
                  });
@@ -42,12 +42,11 @@ namespace ki
             }
             return countrystats;
         }
-        public async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country, List<int> kategorienIDs)
+        public async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country, List<int> kategorienIDs, int futureYear)
         {
 
             Countrystats countrystats = new Countrystats(); //Klasse für alle Kategorien und deren Werte per Jahr
             countrystats.Country = new Country(country); //Land zu dem die Kategorien mit Werte gehören
-            //in der Datenbank sind derzeit nur Werte für Österreich drin
             countrystats.ListWithCategoriesWithYearsAndValues = await dB.GetCategoriesWithValuesAndYearsAsync(country, kategorienIDs); //Werte mit Jahren
             categorycount = countrystats.ListWithCategoriesWithYearsAndValues.Count; //wie viele kategorien an daten für dieses land existieren
             List<CategoriesWithYearsAndValues> CategorysWithFutureValues = new List<CategoriesWithYearsAndValues>();
@@ -62,7 +61,22 @@ namespace ki
                     ParameterStorage parStor = dB.GetParameter(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category));
                     liste[i] = Task<List<YearWithValue>>.Run(() =>
                     {
-                        return new List<YearWithValue>();
+                        List<YearWithValue> yearWithValues = new List<YearWithValue>();
+                        foreach (var item in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
+                        {
+                            yearWithValues.Add(new YearWithValue(item.Year, new Wert(Convert.ToDecimal(item.Value.value)), countrystats.Country.name, item.cat_id));
+                        }
+                        double j = yearWithValues.Max(k => k.Year);
+                        if (j<futureYear)
+                        {
+                            while (j<futureYear)
+                            {
+                                j++;
+                                yearWithValues.Add(new YearWithValue(j, new Wert(Convert.ToDecimal(parStor.W * j + parStor.b))));
+                            }
+                        }
+
+                        return yearWithValues;
                     });
                 }
                 else
@@ -75,7 +89,7 @@ namespace ki
                     //Hole einzelne Datensätze für jedes Jahr heraus
                     foreach (var YearWithValue in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                     {
-                        SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, new Wert(Convert.ToDecimal(YearWithValue.Value.value)), countrystats.ListWithCategoriesWithYearsAndValues[i].category, YearWithValue.cat_id));
+                        SingleCategoryData.Add(new YearWithValue(YearWithValue.Year, new Wert(Convert.ToDecimal(YearWithValue.Value.value)), countrystats.Country.name, YearWithValue.cat_id));
                     }
                     //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
                     //entferne deswegen 0
@@ -99,19 +113,19 @@ namespace ki
                             {
                                 if (SingleCategoryData.Any(x => x.cat_id > 38 && x.cat_id < 45))
                                 {
-                                    return TrainLinearMoreInputsMLNET(SingleCategoryData, PopulationTotal, 2030);
+                                    return TrainLinearMoreInputsMLNET(SingleCategoryData, PopulationTotal, futureYear);
 
                                 }
                                 else
                                 {
                                     if (SingleCategoryData.Any(x => x.cat_id == 4))
                                     {
-                                        PopulationTotal = TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                                        PopulationTotal = TrainLinearOneOutput(SingleCategoryData, futureYear, multi);
                                         return PopulationTotal;
                                     }
                                     else
                                     {
-                                        return TrainLinearOneOutput(SingleCategoryData, 2030, multi);
+                                        return TrainLinearOneOutput(SingleCategoryData, futureYear, multi);
                                     }
 
                                 }
@@ -123,7 +137,7 @@ namespace ki
                         {
                             liste[i] = Task<List<YearWithValue>>.Run(() =>
                             {
-                                return TrainSigmoid(SingleCategoryData, 2030, multi);
+                                return TrainSigmoid(SingleCategoryData, futureYear, multi);
                             });
                         }
                     }
@@ -247,7 +261,7 @@ namespace ki
             var trainer = createTrainer(lr, y);
             ////Ştep 5: training
             double b = 0, w = 0;
-            int max = 2000;
+            int max = 20000;
             for (int i = 1; i <= max; i++)
             {
                 var d = new Dictionary<Variable, Value>();
@@ -274,6 +288,8 @@ namespace ki
                     Console.WriteLine($"b={b0[0][0]}, w={b1[0][0]}");
                     b = b0[0][0];
                     w = b1[0][0];
+                    ParameterStorage ps = new ParameterStorage(float.Parse(w.ToString()), float.Parse(b.ToString()));
+                    dB.SaveParameter(ps, dB.GetCountryByName(KnownValues.Where(k => k.Name != null).First().Name), KnownValues.Where(k => k.cat_id != null).First().cat_id, loss);
                     Console.WriteLine($" ");
                 }
             }
@@ -300,9 +316,6 @@ namespace ki
                     i = inputtemp.Max();
 
                 }
-
-
-
             }
             return KnownValues;
         }

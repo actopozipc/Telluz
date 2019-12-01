@@ -17,11 +17,16 @@ namespace ki
             Console.WriteLine("Gestartet um " +DateTime.Now);
             Stopwatch sw = new Stopwatch();
             sw.Start();
-       
+            try
+            {
+
+            
             var liste =  Task.Run(async () =>
             {
+
                return await AsynchroneMainMethodenWerdenErstAbCsharp7ImplementiertAsync();
             }).GetAwaiter().GetResult();
+               
             sw.Stop();
             Console.WriteLine("Elapsed={0}", sw.Elapsed);
             Console.ReadKey();
@@ -40,6 +45,13 @@ namespace ki
                     }
                 }
             }
+            }
+            catch (AggregateException ex)
+            {
+
+                Console.WriteLine(ex.Flatten());
+            }
+
             Console.ReadKey();
         }
         static async Task<List<Countrystats>> AsynchroneMainMethodenWerdenErstAbCsharp7ImplementiertAsync()
@@ -48,7 +60,7 @@ namespace ki
             CalculateData calc = new CalculateData();
             Random r = new Random();
            
-             var liste = await calc.GenerateForEachCountryAsync(new List<int>() { r.Next(0,264) }, new List<int>() { 4 });
+             var liste = await calc.GenerateForEachCountryAsync(new List<int>() { r.Next(0,264) }, new List<int>() { 4,41 }, 2030);
             return liste;
             
         }

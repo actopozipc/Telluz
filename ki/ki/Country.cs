@@ -8,7 +8,7 @@ namespace ki
 {
     class Country
     {
-        string name;
+      public  string name;
         public float longitude { get; private set; }
         public float latitude { get; private set; }
 

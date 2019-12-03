@@ -140,6 +140,7 @@ namespace ki{
         }
         public void SaveParameter(ParameterStorage parameterStorage, int coa_id, int cat_id, double loss)
         {
+            Console.WriteLine($"Parameter für {coa_id} und {cat_id} wird eingetragen");
             using (SqlConnection sql = new SqlConnection(ki_write_output))
             {
                 sql.Open();

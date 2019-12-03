@@ -58,6 +58,7 @@ namespace ki
             {
                 if (dB.CheckParameters(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category)))
                 {
+                    Console.WriteLine("Daten werden von Datenbank genommen");
                     ParameterStorage parStor = dB.GetParameter(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category));
                     liste[i] = Task<List<YearWithValue>>.Run(() =>
                     {
@@ -243,7 +244,7 @@ namespace ki
             float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
             //Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
             float[] outputsnormiert = new float[outputs.Count()];
-            int WertZumDividieren = outputs.Max().ToString().Length + 1;
+            int WertZumDividieren = Convert.ToInt32(outputs.Max());
             for (int i = 0; i < outputs.Length; i++)
             {
                 outputsnormiert[i] = outputs[i] / WertZumDividieren;
@@ -261,7 +262,7 @@ namespace ki
             var trainer = createTrainer(lr, y);
             ////Ştep 5: training
             double b = 0, w = 0;
-            int max = 20000;
+            int max = 2000;
             for (int i = 1; i <= max; i++)
             {
                 var d = new Dictionary<Variable, Value>();

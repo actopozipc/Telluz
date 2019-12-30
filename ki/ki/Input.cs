@@ -10,6 +10,7 @@ namespace ki
     {
         public Dictionary<float, float> input = new Dictionary<float, float>();
        // public Output output;
+        
         private Dictionary<double, double> jahrMitNormierung = new Dictionary<double, double>();
         private Dictionary<double, double> wertMitNormierung = new Dictionary<double, double>();
         public double step { get; set; }

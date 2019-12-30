@@ -11,7 +11,7 @@ namespace ki
       public  string name;
         public float longitude { get; private set; }
         public float latitude { get; private set; }
-
+        
         public Country(string name)
         {
             this.name = name;

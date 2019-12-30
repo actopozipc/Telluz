@@ -9,7 +9,7 @@ namespace ki
     class Wert
     {
         public float value { get; private set; }
-        bool berechnet;
+       public bool berechnet { get; private set; }
         public Wert(float value)
         {
             this.value = value;

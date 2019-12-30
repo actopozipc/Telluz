@@ -42,7 +42,7 @@ namespace ki
             }
             return countrystats;
         }
-        public async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country, List<int> kategorienIDs, int futureYear)
+        private async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country, List<int> kategorienIDs, int futureYear)
         {
 
             Countrystats countrystats = new Countrystats(); //Klasse für alle Kategorien und deren Werte per Jahr

@@ -25,30 +25,16 @@ namespace ki
             {
 
             
-            var liste =  Task.Run(async () =>
+            Task.Run(async () =>
             {
              await Listen();
-               return await AsynchroneMainMethodenWerdenErstAbCsharp7ImplementiertAsync();
+            
             }).GetAwaiter().GetResult();
                
             sw.Stop();
             Console.WriteLine("Elapsed={0}", sw.Elapsed);
             Console.ReadKey();
-            foreach (var LandMitKategorieUndAllenDatenJahren in liste)
-            {
-                Printf("<======"+LandMitKategorieUndAllenDatenJahren.Country+"======>");
-
-                foreach (var KategorieMitJahrenUndWerten in LandMitKategorieUndAllenDatenJahren.ListWithCategoriesWithYearsAndValues)
-                {
-                   
-                    Printf(KategorieMitJahrenUndWerten.category);
-                
-                    foreach (var JahreMitWerten in KategorieMitJahrenUndWerten.YearsWithValues)
-                    {
-                        Console.WriteLine($"{JahreMitWerten.Year} : {JahreMitWerten.Value.value}");
-                    }
-                }
-            }
+        
             }
             catch (AggregateException ex)
             {
@@ -74,21 +60,52 @@ namespace ki
                     using (NetworkStream ns = client.GetStream())
                     {
                         Request request = (Request)binaryFormatter.Deserialize(ns);
-                        Console.WriteLine();
+                        CalculateData calc = new CalculateData();
+                        var liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } }; //await calc.GenerateForEachCountryAsync(new List<int>() { request.coa_id }, new List<int>() { request.cat_id }, request.to);
+                        
+                        BinaryFormatter bf = new BinaryFormatter();
+                        List<Respond> responds = ConvertDataToRespond(liste);
+                        bf.Serialize(ns, responds);
+                        PrintList(liste);
                     }
                 }
             }
         }
-        static async Task<List<Countrystats>> AsynchroneMainMethodenWerdenErstAbCsharp7ImplementiertAsync()
+        private static List<Respond> ConvertDataToRespond(List<Countrystats> list)
         {
-          
+            List<Respond> responds = new List<Respond>();
+            foreach (var kategorieMitJahrenWerten in list)
+            {
+                for (int i = 0; i < kategorieMitJahrenWerten.ListWithCategoriesWithYearsAndValues.Count; i++)
+                {
+                    foreach (var jahreMitWerten in kategorieMitJahrenWerten.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
+                    {
+                       
+                        responds.Add(new Respond() { value = jahreMitWerten.Value.value, year = jahreMitWerten.Year, berechnet = jahreMitWerten.Value.berechnet});
+                    }
+                }
+              
+            }
+            return responds;
+        }
+      
+        static void PrintList(List<Countrystats> liste)
+        {
+            foreach (var LandMitKategorieUndAllenDatenJahren in liste)
+            {
+                Printf("<======" + LandMitKategorieUndAllenDatenJahren.Country + "======>");
 
-            CalculateData calc = new CalculateData();
-            Random r = new Random();
-           
-             var liste = await calc.GenerateForEachCountryAsync(new List<int>() { r.Next(0,264) }, new List<int>() { 4,41 }, 2030);
-            return liste;
-            
+                foreach (var KategorieMitJahrenUndWerten in LandMitKategorieUndAllenDatenJahren.ListWithCategoriesWithYearsAndValues)
+                {
+
+                    Printf(KategorieMitJahrenUndWerten.category);
+
+                    foreach (var JahreMitWerten in KategorieMitJahrenUndWerten.YearsWithValues)
+                    {
+                        Console.WriteLine($"{JahreMitWerten.Year} : {JahreMitWerten.Value.value}");
+                    }
+                }
+            }
         }
         static void Printf(string text)
         {

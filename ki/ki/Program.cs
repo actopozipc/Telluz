@@ -60,12 +60,25 @@ namespace ki
                     using (NetworkStream ns = client.GetStream())
                     {
                         Request request = (Request)binaryFormatter.Deserialize(ns);
-                        CalculateData calc = new CalculateData();
-                        var liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } }; //await calc.GenerateForEachCountryAsync(new List<int>() { request.coa_id }, new List<int>() { request.cat_id }, request.to);
-                        
-                        BinaryFormatter bf = new BinaryFormatter();
-                        List<Respond> responds = ConvertDataToRespond(liste);
-                        bf.Serialize(ns, responds);
+                   //     CalculateData calc = new CalculateData();
+                        var liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } };
+                        //await calc.GenerateForEachCountryAsync(new List<int>() { request.coa_id }, new List<int>() { request.cat_id }, request.to);
+                        switch (request.typ)
+                        {
+                            case type.Daten:
+                                BinaryFormatter bf = new BinaryFormatter();
+                                List<Respond> responds = ConvertDataToRespond(liste);
+                                bf.Serialize(ns, responds);
+                                break;
+                            case type.Bild: //Hier wird später noch nur ein jahr ein wert zurück gegeben
+                                 bf = new BinaryFormatter();
+                                 responds = ConvertDataToRespond(liste);
+                                bf.Serialize(ns, responds);
+                                break;
+                            default:
+                                break;
+                        }
+                       
                         PrintList(liste);
                     }
                 }

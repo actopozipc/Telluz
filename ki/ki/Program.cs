@@ -60,17 +60,22 @@ namespace ki
                     using (NetworkStream ns = client.GetStream())
                     {
                         Request request = (Request)binaryFormatter.Deserialize(ns);
-                   //     CalculateData calc = new CalculateData();
-                        var liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } };
-                        //await calc.GenerateForEachCountryAsync(new List<int>() { request.coa_id }, new List<int>() { request.cat_id }, request.to);
+                        List<Countrystats> liste;
+                     
                         switch (request.typ)
                         {
                             case type.Daten:
+                                liste = await TryConn(request.coa_id, request.cat_id, request.to);
                                 BinaryFormatter bf = new BinaryFormatter();
                                 List<Respond> responds = ConvertDataToRespond(liste);
                                 bf.Serialize(ns, responds);
                                 break;
                             case type.Bild: //Hier wird später noch nur ein jahr ein wert zurück gegeben
+                                //finde coa id zu ISO code 
+                                //TryConn bis zum gefragten jahr aufrufen
+                                //Wert(e) normieren
+                                //normiertes request.to returnen
+                                GetColorValueFromOriginalValue(liste, request.to);
                                  bf = new BinaryFormatter();
                                  responds = ConvertDataToRespond(liste);
                                 bf.Serialize(ns, responds);
@@ -82,6 +87,28 @@ namespace ki
                         PrintList(liste);
                     }
                 }
+            }
+        }
+        //inshallah ist hier nie mehr als eine kategorie und ein land
+        private static int GetColorValueFromOriginalValue(List<Countrystats> allValues, int year)
+        {
+            var max = allValues.Find(y => y == y).ListWithCategoriesWithYearsAndValues.Find(z => z == z).YearsWithValues.Max(a => a.Value).value;
+            int x = 2 * 255 / Convert.ToInt32(max);
+            return Convert.ToInt32(allValues.Find(a => a == a).ListWithCategoriesWithYearsAndValues.Find(b => b == b).YearsWithValues.First(c => c.Year == year).Value.value) * x;
+        }
+        private static async Task<List<Countrystats>> TryConn(int coa_id, int cat_id, int year)
+        {
+            try
+            {
+                CalculateData calc = new CalculateData();
+             var   liste = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { cat_id }, year);
+                return liste;
+            }
+            catch (Exception)
+            {
+
+           var     liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } };
+                return liste;
             }
         }
         private static List<Respond> ConvertDataToRespond(List<Countrystats> list)

@@ -28,6 +28,7 @@ namespace ki{
         /// <returns>Liste mit Kategorien mit Jahren und Werten</returns>
           public async Task<List<CategoriesWithYearsAndValues>> GetCategoriesWithValuesAndYearsAsync(string country, List<int> kategorieIDs)
         {
+            Console.WriteLine("GetCategoriesWithValuesAndYearsAsync");
             List<CategoriesWithYearsAndValues> keyValuePairs = new List<CategoriesWithYearsAndValues>();
             using (SqlConnection sqlConnection = new SqlConnection(ki_read_input))
             {
@@ -43,6 +44,7 @@ namespace ki{
                         category = item
                     };
                     command.CommandText = $"SELECT year, ROUND(value,5) AS ROUND, c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
+                    Console.WriteLine(command.CommandText);
                     Console.WriteLine(command.CommandText);
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
@@ -68,12 +70,13 @@ namespace ki{
         }
         public bool CheckParameters(int coaID, int catID)
         {
-           
+            Console.WriteLine("CheckParameters");
             using (SqlConnection sqlc = new SqlConnection(ki_read_output))
             {
                 sqlc.Open();
                 SqlCommand command = sqlc.CreateCommand();
                 command.CommandText = $"SELECT COUNT(*) AS COUNT FROM output_data WHERE coa_id = {coaID} AND cat_id = {catID};";
+                Console.WriteLine(command.CommandText);
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -96,20 +99,22 @@ namespace ki{
         }
         public ParameterStorage GetParameter(int CoaID, int catID)
         {
-         
+            Console.WriteLine("GetParameter");
             using (SqlConnection sqlc = new SqlConnection(ki_read_output))
             {
                 sqlc.Open();
                 SqlCommand command = sqlc.CreateCommand();
                 command.CommandText = $"SELECT value FROM output_data WHERE coa_id = {CoaID} AND cat_id = {catID} ORDER BY error";
+                Console.WriteLine(command.CommandText);
                 float W = 0;
                 float b = 0;
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    string value = Convert.ToString(reader["value"]);
+                    
                   
                     while (reader.Read())
                     {
+                        string value = Convert.ToString(reader["value"]);
                         foreach (var parameterstring in value.Split(';'))
                         {
                             char[] arr = parameterstring.ToCharArray();
@@ -140,6 +145,7 @@ namespace ki{
         }
         public void SaveParameter(ParameterStorage parameterStorage, int coa_id, int cat_id, double loss)
         {
+          
             Console.WriteLine($"Parameter für {coa_id} und {cat_id} wird eingetragen");
             using (SqlConnection sql = new SqlConnection(ki_write_output))
             {
@@ -158,17 +164,20 @@ namespace ki{
                 string error = loss.ToString().Replace(',', '.');
 
                 command.CommandText = $"INSERT INTO output_data (coa_id, cat_id, value, error) VALUES ({coa_id},{cat_id},'{parameter}',{error});";
+                Console.WriteLine(command.CommandText);
                 command.ExecuteNonQuery();
             }
           
         }
         public int GetCategoryByName(string category)
         {
+            Console.WriteLine("GetCategoryByName");
             using (SqlConnection sql = new SqlConnection(ki_read_input))
             {
                 sql.Open();
                 SqlCommand command = sql.CreateCommand();
                 command.CommandText = $"SELECT cat_id FROM category WHERE name = '{category}'; ";
+                Console.WriteLine(command.CommandText);
                 int cat_id = 0;
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
@@ -182,13 +191,36 @@ namespace ki{
             }
            
         }
+        public int GetCountryByKey(string key)
+        {
+            Console.WriteLine("GetCountryByKey");
+            int coa_id = 0;
+            using (SqlConnection sqlc = new SqlConnection(ki_read_input))
+            {
+                sqlc.Open();
+                SqlCommand command = sqlc.CreateCommand();
+                command.CommandText = $"SELECT coa_id FROM country_or_area WHERE coa_key='{key}'";
+                Console.WriteLine(command.CommandText);
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        coa_id = Convert.ToInt32(reader["coa_id"]);
+                    }
+                    
+                }
+            }
+            return coa_id;
+        }
         public int GetCountryByName(string name)
         {
+            Console.WriteLine("GetCountryByName");
             using (SqlConnection sqlc = new SqlConnection(ki_read_input))
             {
                 sqlc.Open();
                 SqlCommand command = sqlc.CreateCommand();
                 command.CommandText = $"SELECT coa_id FROM country_or_area WHERE name = '{name}';";
+                Console.WriteLine(command.CommandText);
                 int test123 = -210;
                 using (SqlDataReader reader = command.ExecuteReader())
                 {

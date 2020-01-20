@@ -45,7 +45,6 @@ namespace ki{
                     };
                     command.CommandText = $"SELECT year, ROUND(value,5) AS ROUND, c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
                     Console.WriteLine(command.CommandText);
-                    Console.WriteLine(command.CommandText);
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
 

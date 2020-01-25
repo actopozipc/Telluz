@@ -376,6 +376,7 @@ namespace ki
                 {
                     //Berechne Population bis zu gegebenem Zeitpunkt
                     //Schau ob Parameter zur Bevölkerung da sind
+
                     int landesname = dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name); //Inshallah ist in dieser liste nie kein name irgendwo
                     if (dB.CheckParameters(landesname, 4))       
                     {
@@ -387,6 +388,18 @@ namespace ki
                             
                             m++;
                             Population.Add(new YearWithValue(j, new Wert(ps.W * m + ps.b)));
+
+                    int landesname = dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name; //Inshallah ist in dieser liste nie kein name irgendwo
+                    if (dB.CheckParameters(landesname, 4))       
+                    {
+                        
+                        float j = Population.Max(x => x.Year);
+                        ParameterStorage ps = dB.GetParameter(landesname, 4);
+                        while (j<FutureYear)
+                        {
+                            
+                            j++;
+                            Population.Add(new YearWithValue(j, new Wert(ps.W * j + ps.b));
                         }
                     }
             

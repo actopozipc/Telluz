@@ -20,10 +20,18 @@ namespace ki
         const int x = 210;
         public CalculateData()
         {
-            
-            dB = new DB();
+            try
+            {
+                dB = new DB();
+            }
+            catch (Exception)
+            {
+
+                Console.WriteLine("Connection to DB failed");
+            }
+          
         }
-        public async Task<List<Countrystats>> GenerateForEachCountryAsync(List<int> laenderIDs, List<int> kategorienIDs, int futureYear)
+        public async Task<List<Countrystats>> GenerateForEachCountryAsync(List<int> laenderIDs, List<int> kategorienIDs, int from, int futureYear)
         {
             List<string> laender = dB.GetCountries(laenderIDs); //Liste mit allen Ländern
             List<Countrystats> countrystats = new List<Countrystats>();
@@ -33,7 +41,7 @@ namespace ki
                  {
                      Countrystats c = new Countrystats();
                      c.Country = new Country(laender[i]);
-                     c.ListWithCategoriesWithYearsAndValues = await GenerateAsync(laender[i], kategorienIDs, futureYear);
+                     c.ListWithCategoriesWithYearsAndValues = await GenerateAsync(laender[i], kategorienIDs, from, futureYear);
                      countrystats.Add(c);
 
                  });
@@ -42,7 +50,7 @@ namespace ki
             }
             return countrystats;
         }
-        private async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country, List<int> kategorienIDs, int futureYear)
+        private async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country, List<int> kategorienIDs,int from, int futureYear)
         {
 
             Countrystats countrystats = new Countrystats(); //Klasse für alle Kategorien und deren Werte per Jahr
@@ -56,14 +64,14 @@ namespace ki
             //Arbeite jede Kategorie parallel ab
             for (int i = 0; i < categorycount; i++)
             {
-                if (dB.CheckParameters(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category)))
+                if (dB.CheckParameters(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category))) //Falls Parameter in Datenbank vorhanden sind
                 {
                     Console.WriteLine("Daten werden von Datenbank genommen");
-                    ParameterStorage parStor = dB.GetParameter(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category));
+                    ParameterStorage parStor = dB.GetParameter(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category)); //Bekomme Parameter
                     liste[i] = Task<List<YearWithValue>>.Run(() =>
                     {
                         List<YearWithValue> yearWithValues = new List<YearWithValue>();
-                        foreach (var item in countrystats.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
+                        foreach (var item in countrystats.ListWithCategoriesWithYearsAndValues[i-1].YearsWithValues)
                         {
                             yearWithValues.Add(new YearWithValue(item.Year, new Wert(Convert.ToDecimal(item.Value.value)), countrystats.Country.name, item.cat_id));
                         }
@@ -74,6 +82,22 @@ namespace ki
                             {
                                 j++;
                                 yearWithValues.Add(new YearWithValue(j, new Wert(Convert.ToDecimal(parStor.W * j + parStor.b))));
+                            }
+                        }
+                        else //cut list from year to futureyear
+                        {
+                            if (futureYear > from)
+                            {
+                                int indexMax = yearWithValues.FindIndex(a => a.Year == Convert.ToInt32(futureYear)); //finde Index von Jahr bis zu dem man Daten braucht
+                            yearWithValues.RemoveRange(indexMax, yearWithValues.Count - indexMax); //Cutte List von Jahr bis zu dem man es braucht bis Ende
+                           
+                                int indexMin = yearWithValues.FindIndex(b => b.Year == Convert.ToInt32(from));
+                                yearWithValues.RemoveRange(0, indexMin);
+                            }
+                            else
+                            {
+                                var temp = yearWithValues.Where(x => x.Year == from);
+                                yearWithValues = temp.ToList(); ;
                             }
                         }
 
@@ -680,6 +704,10 @@ namespace ki
             double maxvalue = inputs.Max();
             double count = inputs.Count;
             double diff = Zukunftsjahr - maxvalue;
+            if (diff<0)
+            {
+                diff = diff * 2;
+            }
             double step = 1 / (count + diff);
             List<double> normierteWerte = new List<double>();
             input.step = step;

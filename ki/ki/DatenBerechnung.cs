@@ -14,7 +14,7 @@ namespace ki
 {
     class CalculateData
     {
-       static DB dB = null;
+        static DB dB = null;
         int categorycount;
         const double divident = 10000;
         const int x = 210;
@@ -29,7 +29,6 @@ namespace ki
 
                 Console.WriteLine("Connection to DB failed");
             }
-          
         }
         public async Task<List<Countrystats>> GenerateForEachCountryAsync(List<int> laenderIDs, List<int> kategorienIDs, int from, int futureYear)
         {
@@ -50,7 +49,7 @@ namespace ki
             }
             return countrystats;
         }
-        private async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country, List<int> kategorienIDs,int from, int futureYear)
+        private async Task<List<CategoriesWithYearsAndValues>> GenerateAsync(string country, List<int> kategorienIDs, int from, int futureYear)
         {
 
             Countrystats countrystats = new Countrystats(); //Klasse für alle Kategorien und deren Werte per Jahr
@@ -60,7 +59,7 @@ namespace ki
             List<CategoriesWithYearsAndValues> CategorysWithFutureValues = new List<CategoriesWithYearsAndValues>();
             Task<List<YearWithValue>>[] liste = new Task<List<YearWithValue>>[categorycount]; //liste damit jede kategorie in einem task abgearbeitet werden kann
             List<YearWithValue> PopulationTotal = new List<YearWithValue>();
-            
+
             //Arbeite jede Kategorie parallel ab
             for (int i = 0; i < categorycount; i++)
             {
@@ -71,14 +70,15 @@ namespace ki
                     liste[i] = Task<List<YearWithValue>>.Run(() =>
                     {
                         List<YearWithValue> yearWithValues = new List<YearWithValue>();
-                        foreach (var item in countrystats.ListWithCategoriesWithYearsAndValues[i-1].YearsWithValues)
+                        foreach (var item in countrystats.ListWithCategoriesWithYearsAndValues[i - 1].YearsWithValues)
                         {
                             yearWithValues.Add(new YearWithValue(item.Year, new Wert(Convert.ToDecimal(item.Value.value)), countrystats.Country.name, item.cat_id));
                         }
+                        yearWithValues = RemoveZero(yearWithValues);
                         double j = yearWithValues.Max(k => k.Year);
-                        if (j<futureYear)
+                        if (j < futureYear)
                         {
-                            while (j<futureYear)
+                            while (j < futureYear)
                             {
                                 j++;
                                 yearWithValues.Add(new YearWithValue(j, new Wert(Convert.ToDecimal(parStor.W * j + parStor.b))));
@@ -89,8 +89,8 @@ namespace ki
                             if (futureYear > from)
                             {
                                 int indexMax = yearWithValues.FindIndex(a => a.Year == Convert.ToInt32(futureYear)); //finde Index von Jahr bis zu dem man Daten braucht
-                            yearWithValues.RemoveRange(indexMax, yearWithValues.Count - indexMax); //Cutte List von Jahr bis zu dem man es braucht bis Ende
-                           
+                                yearWithValues.RemoveRange(indexMax, yearWithValues.Count - indexMax); //Cutte List von Jahr bis zu dem man es braucht bis Ende
+
                                 int indexMin = yearWithValues.FindIndex(b => b.Year == Convert.ToInt32(from));
                                 yearWithValues.RemoveRange(0, indexMin);
                             }
@@ -155,8 +155,8 @@ namespace ki
 
                                 }
 
-                            // 
-                        });
+                                // 
+                            });
                         }
                         else
                         {
@@ -239,7 +239,7 @@ namespace ki
             {
                 hiddenNeuron1.inputs = input.getNormierterWert(j) + input.step;
                 outputNeuron.inputs = hiddenNeuron1.output;
-                KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), new Wert((float)(outputNeuron.output * Convert.ToDouble(Math.Pow(10, multi))),true)));
+                KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), new Wert((float)(outputNeuron.output * Convert.ToDouble(Math.Pow(10, multi))), true)));
                 return TrainSigmoid(KnownValues, FutureYear, multi);
             }
             //wenn alle Jahre bekannt sind, returne die Liste
@@ -254,7 +254,7 @@ namespace ki
 
             var device = DeviceDescriptor.UseDefaultDevice();
             ////Step 2: define values, and variables
-            Variable x = Variable.InputVariable(new NDShape(1,1), DataType.Float, "input");
+            Variable x = Variable.InputVariable(new NDShape(1, 1), DataType.Float, "input");
             Variable y = Variable.InputVariable(new NDShape(1, 1), DataType.Float, "output");
             ////Step 2: define training data set from table above
             float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
@@ -275,7 +275,7 @@ namespace ki
             }
             //Werte normiert lassen, sonst stackoverflow :>
             var xValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(inputs, inputs.Length, input.step), device);
-            var yValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(outputsnormiert,outputs.Length, input.step), device);
+            var yValues = Value.CreateBatch(new NDShape(1, 1), GetLastNValues(outputsnormiert, outputs.Length, input.step), device);
             ////Step 3: create linear regression model
             var lr = createLRModel(x, device);
             ////Network model contains only two parameters b and w, so we query
@@ -329,7 +329,7 @@ namespace ki
                 {
                     j++;
 
-                    KnownValues.Add(new YearWithValue(j, new Wert((Convert.ToDecimal(w * i + b) * WertZumDividieren),true)));
+                    KnownValues.Add(new YearWithValue(j, new Wert((Convert.ToDecimal(w * i + b) * WertZumDividieren), true)));
                     float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
                     List<double> fuckinghelpme = new List<double>();
                     foreach (var item in inputtemp)
@@ -362,32 +362,63 @@ namespace ki
             var model = Train(mlContext, inputs);
 
             double j = inputs.Max(i => i.Year);
-            if (j<FutureYear)
+            if (j < FutureYear)
             {
-                
-                    j++;
-                    if (Population.Any(x=>x.Year == j))
+
+                j++;
+                if (Population.Any(x => x.Year == j))
+                {
+                    ListWithCO.Add(PredictCo2(mlContext, model, (float)j, Population.First(x => x.Year == j).Value.value));
+                    return TrainLinearMoreInputsMLNET(ListWithCO, Population, FutureYear);
+                }
+                else     //Was tun falls keine Population in dem Jahr bekannt ist
+                {
+                    //Berechne Population bis zu gegebenem Zeitpunkt
+                    //Schau ob Parameter zur Bevölkerung da sind
+
+                    int landesname = dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name); //Inshallah ist in dieser liste nie kein name irgendwo
+                    if (dB.CheckParameters(landesname, 4))       
                     {
-                      ListWithCO.Add(PredictCo2(mlContext, model, (float)j, Population.First(x => x.Year == j).Value.value));
-                   return TrainLinearMoreInputsMLNET(ListWithCO, Population, FutureYear);
-                    }
-                    else
+                        
+                        float m = Population.Max(x => x.Year);
+                        ParameterStorage ps = dB.GetParameter(landesname, 4);
+                        while (m<FutureYear)
+                        {
+                            
+                            m++;
+                            Population.Add(new YearWithValue(j, new Wert(ps.W * m + ps.b)));
+
+                    int landesname = dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name; //Inshallah ist in dieser liste nie kein name irgendwo
+                    if (dB.CheckParameters(landesname, 4))       
                     {
-                        //Was tun falls keine Population in dem Jahr bekannt ist
+                        
+                        float j = Population.Max(x => x.Year);
+                        ParameterStorage ps = dB.GetParameter(landesname, 4);
+                        while (j<FutureYear)
+                        {
+                            
+                            j++;
+                            Population.Add(new YearWithValue(j, new Wert(ps.W * j + ps.b));
+                        }
                     }
-                 
-                
+            
+
+                    //Dann Temperatur berechnen
+
+                }
+
+
             }
 
             return ListWithCO;
         }
-        
+
         public static ITransformer Train(MLContext mlContext, List<TwoInputRegressionModel> inputs)
         {
             // <Snippet6>
             IDataView dataView = mlContext.Data.LoadFromEnumerable<TwoInputRegressionModel>(inputs);
             // </Snippet6>
-            IDataView trainData =  mlContext.Data.TrainTestSplit(dataView).TrainSet;
+            IDataView trainData = mlContext.Data.TrainTestSplit(dataView).TrainSet;
             // <Snippet7>
             IEstimator<ITransformer> pipeline = mlContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: "Co2")
                     // </Snippet7>
@@ -399,16 +430,16 @@ namespace ki
                     // </Snippet9>
                     // <Snippet10>
                     .Append(mlContext.Regression.Trainers.FastTree()); //Eigentlich sdca, aber dll exception
-            // </Snippet10>
+                                                                       // </Snippet10>
 
-         
+
 
             Console.WriteLine("=============== Create and Train the Model ===============");
 
             // <Snippet11>
             ITransformer model = pipeline.Fit(dataView);
             // </Snippet11>
-           
+
             Console.WriteLine("=============== End of training ===============");
             Console.WriteLine();
             // <Snippet12>
@@ -425,7 +456,7 @@ namespace ki
         private List<YearWithValue> TrainLinearMoreInputs(List<List<YearWithValue>> ListWithKnownValues, int FutureYear, int multi)
         {
             var device = DeviceDescriptor.UseDefaultDevice();
-          
+
 
             //Network definition
             //Inputs sind Werte jeder Liste + das Jahr, zB wenn Liste 1 im Jahr 2015 den Wert 3 und Liste 2 den Wert 12 hat, wird der Input 2015, 3 und der Output 12 sein
@@ -433,7 +464,7 @@ namespace ki
             int OutputsCount = 1; //wie viele outputs raus kommen
             int numHiddenLayers = 1; //anzahl der hidden layer
             int hidenLayerDim = 6; //wie viele "knoten" der hidden layer hat
-          
+
 
             //load data in to memory
             var dataSet = LoadData(ListWithKnownValues[0], ListWithKnownValues[1], InputsCount, OutputsCount);
@@ -487,11 +518,11 @@ namespace ki
             }
             //Summary of training
             double acc = Math.Round((1.0 - trainer.PreviousMinibatchEvaluationAverage()) * 100, 2);
-           
+
             Console.WriteLine($"------TRAINING SUMMARY--------");
             Console.WriteLine($"The model trained with the accuracy {acc}%");
             return new List<YearWithValue>();
-          //  return KnownValues;
+            //  return KnownValues;
         }
         /// <summary>
         /// Gibt eine Tulpe mit Inputs und Outputs zurück
@@ -500,17 +531,17 @@ namespace ki
         /// <param name="InputNumber">Anzahl Inputs</param>
         /// <param name="OutputNumber">Anzahl Outputs</param>
         /// <returns></returns>
-        static (float[], float[]) LoadData(List<YearWithValue> InputList, List<YearWithValue> OutputList,  int InputNumber, int OutputNumber)
+        static (float[], float[]) LoadData(List<YearWithValue> InputList, List<YearWithValue> OutputList, int InputNumber, int OutputNumber)
         {
             var features = new List<float>();
             var label = new List<float>();
             //Überprüfe, ob beide Kategorien gleich viele Einträge haben
             if (InputList.Count != OutputList.Count)
             {
-              
+
 
                 //Meier
-              
+
                 //TODO: Methode schreiben die Listen so cuttet dass beide in den gleichen Jahren einen Eitnrag haben
                 if (InputList.Count > OutputList.Count)
                 {
@@ -550,12 +581,12 @@ namespace ki
             else
             {
                 var length = InputList.Count;
-                
+
                 //Für jedes Element in den beiden Listen
                 for (int i = 0; i < length; i++)
                 {
                     float[] input = new float[InputNumber];
-                    for (int j = 0; j < InputNumber-1; j++)
+                    for (int j = 0; j < InputNumber - 1; j++)
                     {
                         input[j] = InputList[i].Value.value;
                         input[j + 1] = InputList[i].Year;
@@ -568,7 +599,7 @@ namespace ki
                     features.AddRange(input);
                     label.AddRange(output);
                 }
-               
+
             }
             return (features.ToArray(), label.ToArray());
 
@@ -666,19 +697,19 @@ namespace ki
             IDataView data = mlContext.Data.LoadFromEnumerable<YearWithValue>(list);
             var predictions = model.Transform(data);
             var metrics = mlContext.Regression.Evaluate(predictions, "Label", "Score");
-            
+
             Console.WriteLine($"*       RSquared Score:      {metrics.RSquared:0.##}");
-            
+
             Console.WriteLine($"*       Root Mean Squared Error:      {metrics.RootMeanSquaredError:#.##}");
         }
         private static YearWithValue PredictCo2(MLContext mlContext, ITransformer model, float y, float p)
         {
             var predictionFunction = mlContext.Model.CreatePredictionEngine<TwoInputRegressionModel, TwoInputRegressionPrediction>(model);
-            var test = new TwoInputRegressionModel() {Year = y, Population = p};
+            var test = new TwoInputRegressionModel() { Year = y, Population = p };
             var prediction = predictionFunction.Predict(test);
-            return new YearWithValue(y, new Wert(prediction.Co2,true));
+            return new YearWithValue(y, new Wert(prediction.Co2, true));
         }
-        private  Function createLRModel(Variable x, DeviceDescriptor device)
+        private Function createLRModel(Variable x, DeviceDescriptor device)
         {
             //initializer for parameters
             var initV = CNTKLib.GlorotUniformInitializer(1.0, 1, 0, 1);
@@ -704,7 +735,7 @@ namespace ki
             double maxvalue = inputs.Max();
             double count = inputs.Count;
             double diff = Zukunftsjahr - maxvalue;
-            if (diff<0)
+            if (diff < 0)
             {
                 diff = diff * 2;
             }
@@ -745,14 +776,14 @@ namespace ki
             int count = array.Count();
             int temp = n;
             float[] f = new float[n];
-            for (int i = count-1; i >count-n; i--)
+            for (int i = count - 1; i > count - n; i--)
             {
-                f[temp-1] = array[i];
+                f[temp - 1] = array[i];
                 temp--;
             }
             f[0] = float.Parse(Convert.ToString(f[1] - step));
             return f;
         }
-       
+
     }
 }

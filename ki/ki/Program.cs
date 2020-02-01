@@ -133,7 +133,15 @@ namespace ki
             try
             {
                 CalculateData calc = new CalculateData();
-             var   liste = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { cat_id }, fromYear, toYear);
+                List<Countrystats> liste;
+                if (cat_id > 38 && cat_id < 46)
+                {
+                    liste = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { 4, cat_id }, fromYear, toYear);
+                }
+                else
+                {
+                    liste = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { cat_id }, fromYear, toYear);
+                }
                 return liste;
             }
             catch (Exception ex)

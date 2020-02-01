@@ -68,6 +68,25 @@ namespace ki{
             return keyValuePairs;
 
         }
+        public List<YearWithValue> GetPopulationByName(int id)
+        {
+            List<YearWithValue> population = new List<YearWithValue>();
+            using (SqlConnection sqlConnection = new SqlConnection(ki_read_input))
+            {
+                sqlConnection.Open();
+                SqlCommand sqlCommand = sqlConnection.CreateCommand();
+                sqlCommand.CommandText = $"SELECT year, value FROM input_data WHERE cat_id = 4 AND coa_id = {id};";
+                Console.WriteLine(sqlCommand.CommandText);
+                using (SqlDataReader reader = sqlCommand.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        population.Add(new YearWithValue(Convert.ToDouble(reader["year"]), new Wert(Convert.ToDecimal(reader["value"]))));
+                    }
+                }
+            }
+            return population;
+        }
         public bool CheckParameters(int coaID, int catID)
         {
             Console.WriteLine("CheckParameters");
@@ -228,7 +247,7 @@ namespace ki{
                     {
                         test123 = Convert.ToInt32(reader["coa_id"]);
                     }
-                    Console.WriteLine(command.CommandText);
+                   
 
                 }
                 return test123;

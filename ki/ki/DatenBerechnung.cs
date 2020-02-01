@@ -344,10 +344,17 @@ namespace ki
             }
             return KnownValues;
         }
+        //für alle möglichen gase
         private List<YearWithValue> TrainLinearMoreInputsMLNET(List<YearWithValue> ListWithCO, List<YearWithValue> Population, int FutureYear)
         {
             MLContext mlContext = new MLContext(seed: 0);
             List<TwoInputRegressionModel> inputs = new List<TwoInputRegressionModel>();
+            if (!(Population.Count > 0)) //ohje
+            {
+                Console.WriteLine("Zu diesem Punkt im Programm sollte es eigentlich nie kommen. Ich hab aber keine Zeit, das ordentlich zu fixen. Darum hier diese Pfusch-Lösung mit dieser Ausgabe als Erinnerung, dass ich das gscheid behebe, wenn noch Zeit überbleibt");
+                Population = dB.GetPopulationByName(dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name));
+            }
+
             foreach (var JahrMitCO in ListWithCO)
             {
                 float tempyear = JahrMitCO.Year;
@@ -359,6 +366,10 @@ namespace ki
                     }
                 }
             }
+
+
+
+
             var model = Train(mlContext, inputs);
 
             double j = inputs.Max(i => i.Year);
@@ -377,41 +388,44 @@ namespace ki
                     //Schau ob Parameter zur Bevölkerung da sind
 
                     int landesname = dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name); //Inshallah ist in dieser liste nie kein name irgendwo
-                    if (dB.CheckParameters(landesname, 4))       
+                    if (dB.CheckParameters(landesname, 4))
                     {
-                        
+
                         float m = Population.Max(x => x.Year);
                         ParameterStorage ps = dB.GetParameter(landesname, 4);
-                        while (m<FutureYear)
+                        while (m < FutureYear)
                         {
-                            
+
                             m++;
                             Population.Add(new YearWithValue(j, new Wert(ps.W * m + ps.b)));
 
-                    int landesname = dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name; //Inshallah ist in dieser liste nie kein name irgendwo
-                    if (dB.CheckParameters(landesname, 4))       
-                    {
-                        
-                        float j = Population.Max(x => x.Year);
-                        ParameterStorage ps = dB.GetParameter(landesname, 4);
-                        while (j<FutureYear)
-                        {
-                            
-                            j++;
-                            Population.Add(new YearWithValue(j, new Wert(ps.W * j + ps.b));
+
+                            if (dB.CheckParameters(landesname, 4))
+                            {
+
+                                float f = Population.Max(x => x.Year);
+
+                                while (f < FutureYear)
+                                {
+
+                                    f++;
+                                    Population.Add(new YearWithValue(j, new Wert(ps.W * f + ps.b)));
+                                }
+                            }
+                            //Dann berechnen
+                            TrainLinearMoreInputsMLNET(ListWithCO, Population, FutureYear);
                         }
+
+
                     }
-            
-
-                    //Dann Temperatur berechnen
-
                 }
-
-
             }
 
+
             return ListWithCO;
+
         }
+
 
         public static ITransformer Train(MLContext mlContext, List<TwoInputRegressionModel> inputs)
         {

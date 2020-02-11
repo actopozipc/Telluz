@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Configuration;
+using System.Globalization;
 
 namespace ki{
     class DB{
@@ -68,6 +69,25 @@ namespace ki{
             return keyValuePairs;
 
         }
+        public List<YearWithValue> GetPopulationByName(int id)
+        {
+            List<YearWithValue> population = new List<YearWithValue>();
+            using (SqlConnection sqlConnection = new SqlConnection(ki_read_input))
+            {
+                sqlConnection.Open();
+                SqlCommand sqlCommand = sqlConnection.CreateCommand();
+                sqlCommand.CommandText = $"SELECT year, value FROM input_data WHERE cat_id = 4 AND coa_id = {id};";
+                Console.WriteLine(sqlCommand.CommandText);
+                using (SqlDataReader reader = sqlCommand.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        population.Add(new YearWithValue(Convert.ToDouble(reader["year"]), new Wert(Convert.ToDecimal(reader["value"]))));
+                    }
+                }
+            }
+            return population;
+        }
         public bool CheckParameters(int coaID, int catID)
         {
             Console.WriteLine("CheckParameters");
@@ -117,19 +137,20 @@ namespace ki{
                         string value = Convert.ToString(reader["value"]);
                         foreach (var parameterstring in value.Split(';'))
                         {
-                            char[] arr = parameterstring.ToCharArray();
-                            for (int i = 0; i < arr.Length - 2; i++)
+                            string[] singleParameters = parameterstring.Split('=');
+                            if (singleParameters.Length > 1)
                             {
-                                var c = arr[i];
-                                if (c == 'W')
+                                if (singleParameters[0].Contains("W"))
                                 {
-                                    W = arr[i + 2];
+                                    W = float.Parse(singleParameters[1], CultureInfo.InstalledUICulture);
                                 }
-                                if (c == 'b')
+                                else
                                 {
-                                    b = arr[i + 2];
+                                    b = float.Parse(singleParameters[1], CultureInfo.InstalledUICulture);
                                 }
                             }
+                           
+                      
 
                         }
                     }
@@ -228,7 +249,7 @@ namespace ki{
                     {
                         test123 = Convert.ToInt32(reader["coa_id"]);
                     }
-                    Console.WriteLine(command.CommandText);
+                   
 
                 }
                 return test123;

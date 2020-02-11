@@ -138,7 +138,7 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="telluz">
-      <HintPath>..\..\..\..\..\..\..\source\repos\telluz\telluz\bin\Debug\telluz.dll</HintPath>
+      <HintPath>..\..\..\telluz-library\telluz\bin\Debug\telluz.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

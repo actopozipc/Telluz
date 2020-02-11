@@ -171,7 +171,7 @@ namespace ki
             }
             else
             {
-                listWithResponse.Add(new Response())
+                listWithResponse.Add(new Response());
             }
           
             return listWithResponse;

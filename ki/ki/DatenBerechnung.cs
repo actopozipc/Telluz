@@ -78,50 +78,7 @@ namespace ki
                             yearWithValues.Add(new YearWithValue(item.Year, new Wert(Convert.ToDecimal(item.Value.value)), countrystats.Country.name, item.cat_id));
                         }
                         yearWithValues = RemoveZero(yearWithValues);
-                        double j = yearWithValues.Max(k => k.Year);
-                        int valueToDiv = Convert.ToInt32(CategoriesWithYearsAndValues.GetValuesFromList(yearWithValues).Max());
-                        float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(yearWithValues);
-                        List<double> listForTheNormalizedInputs = new List<double>();
-                        foreach (var item in inputs)
-                        {
-                            listForTheNormalizedInputs.Add(item); //Small brain schleife?
-                        }
-                        Input input = Standardization(listForTheNormalizedInputs, futureYear);
-                        inputs = input.getAlleJahreNormiert();
-                        if (j < futureYear)
-                        {
-                            float inputsMax = inputs.Max();
-                            while (j < futureYear)
-                            {
-                                j++;
-                                yearWithValues.Add(new YearWithValue(j, new Wert(Convert.ToDecimal(parStor.W * inputsMax + parStor.b)*valueToDiv)));
-                                float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(yearWithValues);
-                                List<double> fuckinghelpme = new List<double>();
-                                foreach (var item in inputtemp)
-                                {
-                                    fuckinghelpme.Add(item); //Small brain schleife?
-                                }
-                                Input input2 = Standardization(fuckinghelpme, futureYear);
-                                inputtemp = input2.getAlleJahreNormiert();
-                                inputsMax = inputtemp.Max();
-                            }
-                        }
-                        else //cut list from year to futureyear
-                        {
-                            if (futureYear > from)
-                            {
-                                int indexMax = yearWithValues.FindIndex(a => a.Year == Convert.ToInt32(futureYear)); //finde Index von Jahr bis zu dem man Daten braucht
-                                yearWithValues.RemoveRange(indexMax, yearWithValues.Count - indexMax); //Cutte List von Jahr bis zu dem man es braucht bis Ende
-
-                                int indexMin = yearWithValues.FindIndex(b => b.Year == Convert.ToInt32(from));
-                                yearWithValues.RemoveRange(0, indexMin);
-                            }
-                            else
-                            {
-                                var temp = yearWithValues.Where(x => x.Year == from);
-                                yearWithValues = temp.ToList(); ;
-                            }
-                        }
+                        yearWithValues = Predict(yearWithValues, from, futureYear, parStor);
 
                         return yearWithValues;
                     });
@@ -309,6 +266,7 @@ namespace ki
             ////Ştep 5: training
             double b = 0, w = 0;
             int max = 2000;
+
             for (int i = 1; i <= max; i++)
             {
                 var d = new Dictionary<Variable, Value>();
@@ -335,35 +293,14 @@ namespace ki
                     Console.WriteLine($"b={b0[0][0]}, w={b1[0][0]}");
                     b = b0[0][0];
                     w = b1[0][0];
-                    ParameterStorage ps = new ParameterStorage(float.Parse(w.ToString()), float.Parse(b.ToString()));
+                    ParameterStorage ps  = new ParameterStorage(float.Parse(w.ToString()), float.Parse(b.ToString()));
                     dB.SaveParameter(ps, dB.GetCountryByName(KnownValues.Where(k => k.Name != null).First().Name), KnownValues.Where(k => k.cat_id != null).First().cat_id, loss);
+                    KnownValues = Predict(KnownValues, Convert.ToInt32(KnownValues.Min(k => k.Year)), FutureYear, ps);
                     Console.WriteLine($" ");
                 }
             }
 
-            double j = KnownValues.Max(i => i.Year);
-
-            if (j < FutureYear)
-            {
-                float i = inputs.Max();
-
-                while (j < FutureYear)
-                {
-                    j++;
-
-                    KnownValues.Add(new YearWithValue(j, new Wert((Convert.ToDecimal(w * i + b) * WertZumDividieren), true)));
-                    float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(KnownValues);
-                    List<double> fuckinghelpme = new List<double>();
-                    foreach (var item in inputtemp)
-                    {
-                        fuckinghelpme.Add(item); //Small brain schleife?
-                    }
-                    Input input2 = Standardization(fuckinghelpme, FutureYear);
-                    inputtemp = input2.getAlleJahreNormiert();
-                    i = inputtemp.Max();
-
-                }
-            }
+          
             return KnownValues;
         }
         //für alle möglichen gase
@@ -447,7 +384,54 @@ namespace ki
             return ListWithCO;
 
         }
+        public List<YearWithValue> Predict(List<YearWithValue> yearWithValues, int from, int futureYear, ParameterStorage parStor)
+        {
+            double j = yearWithValues.Max(k => k.Year);
+            int valueToDiv = Convert.ToInt32(CategoriesWithYearsAndValues.GetValuesFromList(yearWithValues).Max());
+            float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(yearWithValues);
+            List<double> listForTheNormalizedInputs = new List<double>();
+            foreach (var item in inputs)
+            {
+                listForTheNormalizedInputs.Add(item); //Small brain schleife?
+            }
+            Input input = Standardization(listForTheNormalizedInputs, futureYear);
+            inputs = input.getAlleJahreNormiert();
+            if (j < futureYear)
+            {
+                float inputsMax = inputs.Max();
+                while (j < futureYear)
+                {
+                    j++;
+                    yearWithValues.Add(new YearWithValue(j, new Wert(Convert.ToDecimal(parStor.W * inputsMax + parStor.b) * valueToDiv)));
+                    float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(yearWithValues);
+                    List<double> fuckinghelpme = new List<double>();
+                    foreach (var item in inputtemp)
+                    {
+                        fuckinghelpme.Add(item); //Small brain schleife?
+                    }
+                    Input input2 = Standardization(fuckinghelpme, futureYear);
+                    inputtemp = input2.getAlleJahreNormiert();
+                    inputsMax = inputtemp.Max();
+                }
+            }
+            else //cut list from year to futureyear
+            {
+                if (futureYear > from)
+                {
+                    int indexMax = yearWithValues.FindIndex(a => a.Year == Convert.ToInt32(futureYear)); //finde Index von Jahr bis zu dem man Daten braucht
+                    yearWithValues.RemoveRange(indexMax, yearWithValues.Count - indexMax); //Cutte List von Jahr bis zu dem man es braucht bis Ende
 
+                    int indexMin = yearWithValues.FindIndex(b => b.Year == Convert.ToInt32(from));
+                    yearWithValues.RemoveRange(0, indexMin);
+                }
+                else
+                {
+                    var temp = yearWithValues.Where(x => x.Year == from);
+                    yearWithValues = temp.ToList(); ;
+                }
+            }
+            return yearWithValues;
+        }
 
         public static ITransformer Train(MLContext mlContext, List<TwoInputRegressionModel> inputs)
         {

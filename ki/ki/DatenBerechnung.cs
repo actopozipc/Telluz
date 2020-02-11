@@ -63,7 +63,10 @@ namespace ki
             //Arbeite jede Kategorie parallel ab
             for (int i = 0; i < categorycount; i++)
             {
-                if (dB.CheckParameters(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category))) //Falls Parameter in Datenbank vorhanden sind
+                int coaid = dB.GetCountryByName(country); //numeric of country
+                int categ = dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category); //numeric of category
+                bool parameterExists = dB.CheckParameters(coaid, categ); //check if parameter for this country and this category exist
+                if (parameterExists) 
                 {
                     Console.WriteLine("Daten werden von Datenbank genommen");
                     ParameterStorage parStor = dB.GetParameter(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category)); //Bekomme Parameter
@@ -372,7 +375,7 @@ namespace ki
 
             var model = Train(mlContext, inputs);
 
-            double j = inputs.Max(i => i.Year);
+            double j = inputs.Max(i => i.Year) ;
             if (j < FutureYear)
             {
 
@@ -429,6 +432,7 @@ namespace ki
 
         public static ITransformer Train(MLContext mlContext, List<TwoInputRegressionModel> inputs)
         {
+            
             // <Snippet6>
             IDataView dataView = mlContext.Data.LoadFromEnumerable<TwoInputRegressionModel>(inputs);
             // </Snippet6>
@@ -443,17 +447,17 @@ namespace ki
                     .Append(mlContext.Transforms.Concatenate("Features", "Year", "Population"))
                     // </Snippet9>
                     // <Snippet10>
-                    .Append(mlContext.Regression.Trainers.FastTree()); //Eigentlich sdca, aber dll exception
-                                                                       // </Snippet10>
+                    .Append(mlContext.Regression.Trainers.FastTree()); 
+                                                                   // </Snippet10>
 
-
+            Console.WriteLine("1");
 
             Console.WriteLine("=============== Create and Train the Model ===============");
 
             // <Snippet11>
-            ITransformer model = pipeline.Fit(dataView);
+            ITransformer model = pipeline.Fit(dataView); //here it stops
             // </Snippet11>
-
+            Console.WriteLine("2");
             Console.WriteLine("=============== End of training ===============");
             Console.WriteLine();
             // <Snippet12>

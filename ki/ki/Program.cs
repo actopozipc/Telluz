@@ -153,20 +153,28 @@ namespace ki
         }
         private static List<Response> ConvertDataToRespond(List<Countrystats> list)
         {
-            List<Response> responds = new List<Response>();
-            foreach (var kategorieMitJahrenWerten in list)
+            List<Response> listWithResponse = new List<Response>();
+            if (list.Any(x=>x.ListWithCategoriesWithYearsAndValues.Any(y=>y.YearsWithValues.Count>0)))
             {
-                for (int i = 0; i < kategorieMitJahrenWerten.ListWithCategoriesWithYearsAndValues.Count; i++)
+                foreach (var kategorieMitJahrenWerten in list)
                 {
-                    foreach (var jahreMitWerten in kategorieMitJahrenWerten.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
+                    for (int i = 0; i < kategorieMitJahrenWerten.ListWithCategoriesWithYearsAndValues.Count; i++)
                     {
-                       
-                        responds.Add(new Response() { value = jahreMitWerten.Value.value, year = jahreMitWerten.Year, berechnet = jahreMitWerten.Value.berechnet});
+                        foreach (var jahreMitWerten in kategorieMitJahrenWerten.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
+                        {
+
+                            listWithResponse.Add(new Response() { value = jahreMitWerten.Value.value, year = jahreMitWerten.Year, berechnet = jahreMitWerten.Value.berechnet });
+                        }
                     }
+
                 }
-              
             }
-            return responds;
+            else
+            {
+                listWithResponse.Add(new Response())
+            }
+          
+            return listWithResponse;
         }
       
         static void PrintList(List<Countrystats> liste)

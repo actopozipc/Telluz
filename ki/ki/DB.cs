@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Configuration;
+using System.Globalization;
 
 namespace ki{
     class DB{
@@ -136,19 +137,20 @@ namespace ki{
                         string value = Convert.ToString(reader["value"]);
                         foreach (var parameterstring in value.Split(';'))
                         {
-                            char[] arr = parameterstring.ToCharArray();
-                            for (int i = 0; i < arr.Length - 2; i++)
+                            string[] singleParameters = parameterstring.Split('=');
+                            if (singleParameters.Length > 1)
                             {
-                                var c = arr[i];
-                                if (c == 'W')
+                                if (singleParameters[0].Contains("W"))
                                 {
-                                    W = arr[i + 2];
+                                    W = float.Parse(singleParameters[1], CultureInfo.InstalledUICulture);
                                 }
-                                if (c == 'b')
+                                else
                                 {
-                                    b = arr[i + 2];
+                                    b = float.Parse(singleParameters[1], CultureInfo.InstalledUICulture);
                                 }
                             }
+                           
+                      
 
                         }
                     }

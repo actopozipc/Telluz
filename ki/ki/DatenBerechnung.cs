@@ -79,12 +79,31 @@ namespace ki
                         }
                         yearWithValues = RemoveZero(yearWithValues);
                         double j = yearWithValues.Max(k => k.Year);
+                        int valueToDiv = Convert.ToInt32(CategoriesWithYearsAndValues.GetValuesFromList(yearWithValues).Max());
+                        float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(yearWithValues);
+                        List<double> listForTheNormalizedInputs = new List<double>();
+                        foreach (var item in inputs)
+                        {
+                            listForTheNormalizedInputs.Add(item); //Small brain schleife?
+                        }
+                        Input input = Standardization(listForTheNormalizedInputs, futureYear);
+                        inputs = input.getAlleJahreNormiert();
                         if (j < futureYear)
                         {
+                            float inputsMax = inputs.Max();
                             while (j < futureYear)
                             {
                                 j++;
-                                yearWithValues.Add(new YearWithValue(j, new Wert(Convert.ToDecimal(parStor.W * j + parStor.b))));
+                                yearWithValues.Add(new YearWithValue(j, new Wert(Convert.ToDecimal(parStor.W * inputsMax + parStor.b)*valueToDiv)));
+                                float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(yearWithValues);
+                                List<double> fuckinghelpme = new List<double>();
+                                foreach (var item in inputtemp)
+                                {
+                                    fuckinghelpme.Add(item); //Small brain schleife?
+                                }
+                                Input input2 = Standardization(fuckinghelpme, futureYear);
+                                inputtemp = input2.getAlleJahreNormiert();
+                                inputsMax = inputtemp.Max();
                             }
                         }
                         else //cut list from year to futureyear

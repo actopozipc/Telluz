@@ -22,10 +22,10 @@ namespace ki{
        
          }
         /// <summary>
-        /// Returnt Kategorien mit allen Jahren und Werten eines einzelnen Landes
+        /// Returns categorys with all years and values of a single country
         /// </summary>
-        /// <param name="country">Land</param>
-        /// <param name="kategorieIDs">Liste mit Kategorien die zu dem Land gefragt werden</param>
+        /// <param name="country">Country</param>
+        /// <param name="kategorieIDs">List of category IDs</param>
         /// <returns>Liste mit Kategorien mit Jahren und Werten</returns>
           public async Task<List<CategoriesWithYearsAndValues>> GetCategoriesWithValuesAndYearsAsync(string country, List<int> kategorieIDs)
         {
@@ -33,9 +33,9 @@ namespace ki{
             List<CategoriesWithYearsAndValues> keyValuePairs = new List<CategoriesWithYearsAndValues>();
             using (SqlConnection sqlConnection = new SqlConnection(ki_read_input))
             {
-                sqlConnection.Open();
+                await sqlConnection.OpenAsync();
                 SqlCommand command = sqlConnection.CreateCommand();
-                List<string> vs = GetItems(kategorieIDs);
+                List<string> vs = await GetNamesOfCategoriesByIDsAsync(kategorieIDs);
              
                 foreach (var item in vs)
                 {
@@ -46,18 +46,17 @@ namespace ki{
                     };
                     command.CommandText = $"SELECT year, ROUND(value,5) AS ROUND, c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
                     Console.WriteLine(command.CommandText);
-                    Console.WriteLine(command.CommandText);
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
 
                         List<YearWithValue> temp = new List<YearWithValue>();
                         while (await reader.ReadAsync()) //fraglich ob es nicht eine bessere Methode gibt
                         {
-                            int tempy = Convert.ToInt32(reader["year"]);
-                            var tempv = Convert.ToDecimal(reader["ROUND"].ToString());
-                            int cat = Convert.ToInt32(reader["cat_id"]);
+                            int year = Convert.ToInt32(reader["year"]);
+                            var value = Convert.ToDecimal(reader["ROUND"].ToString());
+                            int catid = Convert.ToInt32(reader["cat_id"]);
 
-                            temp.Add(new YearWithValue(tempy, new Wert((decimal)tempv, false), item, cat));
+                            temp.Add(new YearWithValue(year, new Wert((decimal)value, false), item, catid));
                         }
                         kmjw.YearsWithValues = temp;
                         keyValuePairs.Add(kmjw);
@@ -69,18 +68,18 @@ namespace ki{
             return keyValuePairs;
 
         }
-        public List<YearWithValue> GetPopulationByName(int id)
+        public async Task<List<YearWithValue>> GetPopulationByCoaIdAsync(int coaid)
         {
             List<YearWithValue> population = new List<YearWithValue>();
             using (SqlConnection sqlConnection = new SqlConnection(ki_read_input))
             {
-                sqlConnection.Open();
+                await sqlConnection.OpenAsync();
                 SqlCommand sqlCommand = sqlConnection.CreateCommand();
-                sqlCommand.CommandText = $"SELECT year, value FROM input_data WHERE cat_id = 4 AND coa_id = {id};";
+                sqlCommand.CommandText = $"SELECT year, value FROM input_data WHERE cat_id = 4 AND coa_id = {coaid};";
                 Console.WriteLine(sqlCommand.CommandText);
-                using (SqlDataReader reader = sqlCommand.ExecuteReader())
+                using (SqlDataReader reader = await sqlCommand.ExecuteReaderAsync())
                 {
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
                         population.Add(new YearWithValue(Convert.ToDouble(reader["year"]), new Wert(Convert.ToDecimal(reader["value"]))));
                     }
@@ -88,21 +87,20 @@ namespace ki{
             }
             return population;
         }
-        public bool CheckParameters(int coaID, int catID)
+        public async Task<bool> CheckParametersAsync(int coaID, int catID)
         {
-            Console.WriteLine("CheckParameters");
             using (SqlConnection sqlc = new SqlConnection(ki_read_output))
             {
-                sqlc.Open();
+                await sqlc.OpenAsync();
                 SqlCommand command = sqlc.CreateCommand();
                 command.CommandText = $"SELECT COUNT(*) AS COUNT FROM output_data WHERE coa_id = {coaID} AND cat_id = {catID};";
                 Console.WriteLine(command.CommandText);
-                using (SqlDataReader reader = command.ExecuteReader())
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
                 {
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
                         int count = (Int32)reader["COUNT"];
-                        if (count > 1)
+                        if (count > 0)
                         {
                             return true;
                         }
@@ -117,22 +115,22 @@ namespace ki{
            
             return false;
         }
-        public ParameterStorage GetParameter(int CoaID, int catID)
+        public async Task<ParameterStorage> GetParameterAsync(int coaid, int catid)
         {
             Console.WriteLine("GetParameter");
             using (SqlConnection sqlc = new SqlConnection(ki_read_output))
             {
-                sqlc.Open();
+                await sqlc.OpenAsync();
                 SqlCommand command = sqlc.CreateCommand();
-                command.CommandText = $"SELECT value FROM output_data WHERE coa_id = {CoaID} AND cat_id = {catID} ORDER BY error";
+                command.CommandText = $"SELECT value FROM output_data WHERE coa_id = {coaid} AND cat_id = {catid} ORDER BY error";
                 Console.WriteLine(command.CommandText);
                 float W = 0;
                 float b = 0;
-                using (SqlDataReader reader = command.ExecuteReader())
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
                 {
                     
                   
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
                         string value = Convert.ToString(reader["value"]);
                         foreach (var parameterstring in value.Split(';'))
@@ -149,13 +147,9 @@ namespace ki{
                                     b = float.Parse(singleParameters[1], CultureInfo.InstalledUICulture);
                                 }
                             }
-                           
-                      
-
                         }
                     }
 
-                   
                 }
             
                 return new ParameterStorage(W, b);
@@ -164,19 +158,20 @@ namespace ki{
             }
 
         }
-        public void SaveParameter(ParameterStorage parameterStorage, int coa_id, int cat_id, double loss)
+        public async Task SaveParameterAsync(ParameterStorage parameterStorage, int coa_id, int cat_id, double loss)
         {
           
             Console.WriteLine($"Parameter für {coa_id} und {cat_id} wird eingetragen");
             using (SqlConnection sql = new SqlConnection(ki_write_output))
             {
-                sql.Open();
+                await sql.OpenAsync();
                 SqlCommand command = sql.CreateCommand();
                 string parameter = parameterStorage.GetParameterAsString();
                 //pfusch
-                if (loss>10000)
+                if (loss>10000) //should NEVER be that high! optimal error is <1
                 {
-                    while (loss>10000)
+                    Console.WriteLine("Fehler viel zu hoch");
+                    while (loss>10000) //stackoverflow otherwise
                     {
                         loss = loss / 1000;
                     }
@@ -186,11 +181,11 @@ namespace ki{
 
                 command.CommandText = $"INSERT INTO output_data (coa_id, cat_id, value, error) VALUES ({coa_id},{cat_id},'{parameter}',{error});";
                 Console.WriteLine(command.CommandText);
-                command.ExecuteNonQuery();
+                await command.ExecuteNonQueryAsync();
             }
           
         }
-        public int GetCategoryByName(string category)
+        public async Task<int> GetCategoryByNameAsync(string category)
         {
             Console.WriteLine("GetCategoryByName");
             using (SqlConnection sql = new SqlConnection(ki_read_input))
@@ -200,9 +195,9 @@ namespace ki{
                 command.CommandText = $"SELECT cat_id FROM category WHERE name = '{category}'; ";
                 Console.WriteLine(command.CommandText);
                 int cat_id = 0;
-                using (SqlDataReader reader = command.ExecuteReader())
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
                 {
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
                         cat_id = Convert.ToInt32(reader["cat_id"]);
                     }
@@ -212,19 +207,24 @@ namespace ki{
             }
            
         }
-        public int GetCountryByKey(string key)
+        /// <summary>
+        /// Gets ID of a country by ISO code
+        /// </summary>
+        /// <param name="key">ISO</param>
+        /// <returns></returns>
+        public async Task<int> GetCountryByKeyAsync(string key)
         {
             Console.WriteLine("GetCountryByKey");
             int coa_id = 0;
             using (SqlConnection sqlc = new SqlConnection(ki_read_input))
             {
-                sqlc.Open();
+                await sqlc.OpenAsync();
                 SqlCommand command = sqlc.CreateCommand();
                 command.CommandText = $"SELECT coa_id FROM country_or_area WHERE coa_key='{key}'";
                 Console.WriteLine(command.CommandText);
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
                         coa_id = Convert.ToInt32(reader["coa_id"]);
                     }
@@ -233,40 +233,40 @@ namespace ki{
             }
             return coa_id;
         }
-        public int GetCountryByName(string name)
+        public async Task<int> GetCountryByNameAsync(string name)
         {
             Console.WriteLine("GetCountryByName");
             using (SqlConnection sqlc = new SqlConnection(ki_read_input))
             {
-                sqlc.Open();
+               await sqlc.OpenAsync();
                 SqlCommand command = sqlc.CreateCommand();
                 command.CommandText = $"SELECT coa_id FROM country_or_area WHERE name = '{name}';";
                 Console.WriteLine(command.CommandText);
-                int test123 = -210;
-                using (SqlDataReader reader = command.ExecuteReader())
+                int coaid = -210;
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
                 {
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
-                        test123 = Convert.ToInt32(reader["coa_id"]);
+                        coaid = Convert.ToInt32(reader["coa_id"]);
                     }
                    
 
                 }
-                return test123;
+                return coaid;
             }
            
         }
       
         /// <summary>
-        /// Returnt eine Liste mit Namen die zu den IDs einer Kategorie gehören
+        ///Returns list of names based on a list with ids of categories
         /// </summary>
         /// <param name="catids"></param>
         /// <returns></returns>
-        private List<string> GetItems(List<int> catids)
+        private async Task<List<string>> GetNamesOfCategoriesByIDsAsync(List<int> catids)
         {
             using (SqlConnection sqlc = new SqlConnection(ki_read_input))
             {
-                sqlc.Open();
+                await sqlc.OpenAsync();
                 SqlCommand command = sqlc.CreateCommand();
                 if (catids.Count == 0)
                 {
@@ -283,9 +283,9 @@ namespace ki{
                 }
 
                 List<string> disziplin = new List<string>();
-                using (SqlDataReader reader = command.ExecuteReader())
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
                 {
-                    while (reader.Read()) //fraglich ob es nicht eine bessere Methode gibt
+                    while (await reader.ReadAsync()) //fraglich ob es nicht eine bessere Methode gibt
                     {
                         disziplin.Add((string)reader["name"]);
                     }
@@ -294,11 +294,11 @@ namespace ki{
             }
           
         }
-        public List<string> GetCountries(List<int> coaids)
+        public async Task<List<string>> GetCountriesToCategoriesAsync(List<int> coaids)
         {
             using (SqlConnection sqlc = new SqlConnection(ki_read_input))
             {
-                sqlc.Open();
+               await sqlc.OpenAsync();
                 SqlCommand command = sqlc.CreateCommand();
                 if (coaids.Count == 0)
                 {
@@ -316,9 +316,9 @@ namespace ki{
                     command.CommandText = ConcatSQLConditions(statementConditions, "SELECT name FROM country_or_area") + ";";
                 }
                 List<string> land = new List<string>();
-                using (SqlDataReader reader = command.ExecuteReader())
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
                 {
-                    while (reader.Read()) //fraglich ob es nicht eine bessere Methode gibt
+                    while (await reader.ReadAsync()) //fraglich ob es nicht eine bessere Methode gibt
                     {
                         land.Add((string)reader["name"]);
                     }

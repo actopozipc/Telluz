@@ -7,7 +7,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
 using System.Threading.Tasks;
 using telluz;
 
@@ -92,7 +91,7 @@ namespace ki
                                     {
                                         //finde coa id zu ISO code 
                                         DB db = new DB();
-                                        coa_id = db.GetCountryByKey(request.key);
+                                        coa_id = await db.GetCountryByKeyAsync(request.key);
                                     }
                                     if (coa_id > 0) //falls gültiger Iso Code
                                     {
@@ -147,7 +146,7 @@ namespace ki
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
-           var     liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } };
+           var liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } };
                 return liste;
             }
         }

@@ -32,7 +32,7 @@ namespace ki
         }
         public async Task<List<Countrystats>> GenerateForEachCountryAsync(List<int> laenderIDs, List<int> kategorienIDs, int from, int futureYear)
         {
-            List<string> laender = dB.GetCountries(laenderIDs); //Liste mit allen Ländern
+            List<string> laender = await dB.GetCountriesToCategoriesAsync(laenderIDs); //Liste mit allen Ländern
             List<Countrystats> countrystats = new List<Countrystats>();
             for (int i = 0; i < laender.Count; i++)
             {
@@ -63,13 +63,13 @@ namespace ki
             //Arbeite jede Kategorie parallel ab
             for (int i = 0; i < categorycount; i++)
             {
-                int coaid = dB.GetCountryByName(country); //numeric of country
-                int categ = dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category); //numeric of category
-                bool parameterExists = dB.CheckParameters(coaid, categ); //check if parameter for this country and this category exist
+                int coaid = await dB.GetCountryByNameAsync(country); //numeric of country
+                int categ = await dB.GetCategoryByNameAsync(countrystats.ListWithCategoriesWithYearsAndValues[i].category); //numeric of category
+                bool parameterExists = await dB.CheckParametersAsync(coaid, categ); //check if parameter for this country and this category exist
                 if (parameterExists) 
                 {
                     Console.WriteLine("Daten werden von Datenbank genommen");
-                    ParameterStorage parStor = dB.GetParameter(dB.GetCountryByName(country), dB.GetCategoryByName(countrystats.ListWithCategoriesWithYearsAndValues[i].category)); //Bekomme Parameter
+                    ParameterStorage parStor = await dB.GetParameterAsync(coaid, categ); //Bekomme Parameter
                     liste[i] = Task<List<YearWithValue>>.Run(() =>
                     {
                         List<YearWithValue> yearWithValues = new List<YearWithValue>();
@@ -79,14 +79,11 @@ namespace ki
                         }
                         yearWithValues = RemoveZero(yearWithValues);
                         yearWithValues = Predict(yearWithValues, from, futureYear, parStor);
-
                         return yearWithValues;
                     });
                 }
                 else
                 {
-
-
                     //Erstelle für jede Kategorie einen Liste mit eigenen Datensätzen
                     List<YearWithValue> SingleCategoryData = new List<YearWithValue>();
 
@@ -113,23 +110,26 @@ namespace ki
                         if (DifferentValuesCount(SingleCategoryData) > 2)
                         {
                             //linear train
-                            liste[i] = Task<List<YearWithValue>>.Run(() =>
+                            liste[i] =  Task<List<YearWithValue>>.Run(async () =>
                             {
                                 if (SingleCategoryData.Any(x => x.cat_id > 38 && x.cat_id < 45))
                                 {
-                                    return TrainLinearMoreInputsMLNET(SingleCategoryData, PopulationTotal, futureYear);
-
+                                    List<YearWithValue> x = await TrainLinearMoreInputsMLNETAsync(SingleCategoryData, PopulationTotal, futureYear);
+                                    return x;
+                                   
                                 }
                                 else
                                 {
                                     if (SingleCategoryData.Any(x => x.cat_id == 4))
                                     {
-                                        PopulationTotal = TrainLinearOneOutput(SingleCategoryData, futureYear, multi);
+                                        PopulationTotal = await TrainLinearOneOutputAsync(SingleCategoryData, futureYear, multi);
                                         return PopulationTotal;
+
                                     }
                                     else
                                     {
-                                        return TrainLinearOneOutput(SingleCategoryData, futureYear, multi);
+                                        List<YearWithValue> x  = await TrainLinearOneOutputAsync(SingleCategoryData, futureYear, multi);
+                                        return x;
                                     }
 
                                 }
@@ -228,7 +228,7 @@ namespace ki
             }
 
         }
-        private List<YearWithValue> TrainLinearOneOutput(List<YearWithValue> KnownValues, int FutureYear, int multi)
+        private async Task<List<YearWithValue>> TrainLinearOneOutputAsync(List<YearWithValue> KnownValues, int FutureYear, int multi)
         {
 
             var device = DeviceDescriptor.UseDefaultDevice();
@@ -294,9 +294,9 @@ namespace ki
                     b = b0[0][0];
                     w = b1[0][0];
                     ParameterStorage ps  = new ParameterStorage(float.Parse(w.ToString()), float.Parse(b.ToString()));
-                    dB.SaveParameter(ps, dB.GetCountryByName(KnownValues.Where(k => k.Name != null).First().Name), KnownValues.Where(k => k.cat_id != null).First().cat_id, loss);
+                    int coaid = await dB.GetCountryByNameAsync(KnownValues.Where(k => k.Name != null).First().Name);
+                    await dB.SaveParameterAsync(ps, coaid, KnownValues.Where(k => k.cat_id != null).First().cat_id, loss);
                     KnownValues = Predict(KnownValues, Convert.ToInt32(KnownValues.Min(k => k.Year)), FutureYear, ps);
-                    Console.WriteLine($" ");
                 }
             }
 
@@ -304,14 +304,15 @@ namespace ki
             return KnownValues;
         }
         //für alle möglichen gase
-        private List<YearWithValue> TrainLinearMoreInputsMLNET(List<YearWithValue> ListWithCO, List<YearWithValue> Population, int FutureYear)
+        private async Task<List<YearWithValue>> TrainLinearMoreInputsMLNETAsync(List<YearWithValue> ListWithCO, List<YearWithValue> Population, int FutureYear)
         {
             MLContext mlContext = new MLContext(seed: 0);
             List<TwoInputRegressionModel> inputs = new List<TwoInputRegressionModel>();
             if (!(Population.Count > 0)) //ohje
             {
                 Console.WriteLine("Zu diesem Punkt im Programm sollte es eigentlich nie kommen. Ich hab aber keine Zeit, das ordentlich zu fixen. Darum hier diese Pfusch-Lösung mit dieser Ausgabe als Erinnerung, dass ich das gscheid behebe, wenn noch Zeit überbleibt");
-                Population = dB.GetPopulationByName(dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name));
+                int coaid = await dB.GetCountryByNameAsync(ListWithCO.First(x => x.Name != null).Name);
+                Population = await dB.GetPopulationByCoaIdAsync(coaid);
             }
 
             foreach (var JahrMitCO in ListWithCO)
@@ -339,19 +340,19 @@ namespace ki
                 if (Population.Any(x => x.Year == j))
                 {
                     ListWithCO.Add(PredictCo2(mlContext, model, (float)j, Population.First(x => x.Year == j).Value.value));
-                    return TrainLinearMoreInputsMLNET(ListWithCO, Population, FutureYear);
+                    return await TrainLinearMoreInputsMLNETAsync(ListWithCO, Population, FutureYear);
                 }
                 else     //Was tun falls keine Population in dem Jahr bekannt ist
                 {
                     //Berechne Population bis zu gegebenem Zeitpunkt
                     //Schau ob Parameter zur Bevölkerung da sind
 
-                    int landesname = dB.GetCountryByName(ListWithCO.First(x => x.Name != null).Name); //Inshallah ist in dieser liste nie kein name irgendwo
-                    if (dB.CheckParameters(landesname, 4))
+                    int landesname = await dB.GetCountryByNameAsync(ListWithCO.First(x => x.Name != null).Name); //Inshallah ist in dieser liste nie kein name irgendwo
+                    if (await dB.CheckParametersAsync(landesname, 4))
                     {
 
                         float m = Population.Max(x => x.Year);
-                        ParameterStorage ps = dB.GetParameter(landesname, 4);
+                        ParameterStorage ps = await dB.GetParameterAsync(landesname, 4);
                         while (m < FutureYear)
                         {
 
@@ -359,7 +360,7 @@ namespace ki
                             Population.Add(new YearWithValue(j, new Wert(ps.W * m + ps.b)));
 
 
-                            if (dB.CheckParameters(landesname, 4))
+                            if (await dB.CheckParametersAsync(landesname, 4))
                             {
 
                                 float f = Population.Max(x => x.Year);
@@ -372,7 +373,7 @@ namespace ki
                                 }
                             }
                             //Dann berechnen
-                            TrainLinearMoreInputsMLNET(ListWithCO, Population, FutureYear);
+                           return await TrainLinearMoreInputsMLNETAsync(ListWithCO, Population, FutureYear);
                         }
 
 
@@ -384,6 +385,14 @@ namespace ki
             return ListWithCO;
 
         }
+        /// <summary>
+        /// Calculates future values based on alreadyknown Parameters
+        /// </summary>
+        /// <param name="yearWithValues">List that gets extended</param>
+        /// <param name="from">startyear</param>
+        /// <param name="futureYear">year in the future</param>
+        /// <param name="parStor">parameter</param>
+        /// <returns></returns>
         public List<YearWithValue> Predict(List<YearWithValue> yearWithValues, int from, int futureYear, ParameterStorage parStor)
         {
             double j = yearWithValues.Max(k => k.Year);
@@ -567,35 +576,12 @@ namespace ki
                 if (InputList.Count > OutputList.Count)
                 {
                     var result = OutputList.Join(InputList, element1 => element1.Year, element2 => element2.Year, (element1, element2) => element1);
-                    //for (int i = 0; i < InputList.Count; i++)
-                    //{
-                    //    var item = InputList[i];
-                    //    if (OutputList.Any(x => x.Year == item.Year))
-                    //    {
-                    //        continue;
-                    //    }
-                    //    else
-                    //    {
-                    //        InputList.Remove(item);
-                    //    }
-                    //}
                 }
 
                 else
                 {
                     var result = InputList.Join(OutputList, element1 => element1.Year, element2 => element2.Year, (element1, element2) => element1);
-                    //for (int i = 0; i < OutputList.Count; i++)
-                    //{
-                    //    var item = OutputList[i];
-                    //    if (InputList.Any(x => x.Year == item.Year))
-                    //    {
-                    //        continue;
-                    //    }
-                    //    else
-                    //    {
-                    //        OutputList.Remove(item);
-                    //    }
-                    //}
+                  
                 }
                 LoadData(InputList, OutputList, InputNumber, OutputNumber);
             }

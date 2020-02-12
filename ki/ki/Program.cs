@@ -73,46 +73,47 @@ namespace ki
                         else
                         {
                             List<Countrystats> liste = new List<Countrystats>();
-                            List<Response> responds = new List<Response>();
+                            Response response = new Response();
                             BinaryFormatter bf = new BinaryFormatter();
                             switch (request.typ)
                             {
                                 case type.Daten:
                                     liste = await TryConn(request.coa_id, request.cat_id, request.from, request.to);
-                                    responds = ConvertDataToRespond(liste);
+                                    response = ConvertDataToRespond(liste);
                                     break;
                                 case type.Bild:
-                                    int coa_id;
+                                    int coaid;
                                     if (Int32.TryParse(request.key, out int result)) //Falls Land über ID angefragt wird
                                     {
-                                        coa_id = Convert.ToInt32(request.key);
+                                        coaid = Convert.ToInt32(request.key);
                                     }
                                     else //falls Land über ISO code angefragt wird
                                     {
                                         //finde coa id zu ISO code 
-                                        DB db = new DB();
-                                        coa_id = await db.GetCountryByKeyAsync(request.key);
+                                        DB dB = new DB();
+                                        coaid = await dB.GetCountryByKeyAsync(request.key);
                                     }
-                                    if (coa_id > 0) //falls gültiger Iso Code
+                                    if (coaid > 0) //falls gültiger Iso Code
                                     {
                                         //TryConn bis zum gefragten jahr aufrufen
-                                        liste = await TryConn(coa_id, request.cat_id, request.from, request.to);
+                                        liste = await TryConn(coaid, request.cat_id, request.from, request.to);
                                         //Wert(e) normieren
                                         //normiertes request.to returnen
-                                        GetColorValueFromOriginalValue(liste, request.to);
-                                        responds = ConvertDataToRespond(liste);
-                                       
+                                     
+                                        response = ConvertDataToRespond(liste);
+                                        response.colorVal = GetColorValueFromOriginalValue(liste, request.to);
+
                                     }
                                     else //falls ungültiger ISO code
                                     {
-                                        responds.Add(new Response() { error_message = "Invalid ISO" });
+                                        response.errorMessage = "Invalid ISO";
                                     }
                                    
                                     break;
                                 default:
                                     break;
                             }
-                            bf.Serialize(ns, responds);
+                            bf.Serialize(ns, response);
                             PrintList(liste);
                         }
                         
@@ -121,10 +122,10 @@ namespace ki
             }
         }
         //inshallah ist hier nie mehr als eine kategorie und ein land
-        private static int GetColorValueFromOriginalValue(List<Countrystats> allValues, int year)
+        private static double GetColorValueFromOriginalValue(List<Countrystats> allValues, int year)
         {
             var max = allValues.Find(y => y == y).ListWithCategoriesWithYearsAndValues.Find(z => z == z).YearsWithValues.Max(a => a.Value.value);
-            int x = 2 * 255 / Convert.ToInt32(max);
+            float x = 2 * 255 / Convert.ToInt32(max);
             return Convert.ToInt32(allValues.Find(a => a == a).ListWithCategoriesWithYearsAndValues.Find(b => b == b).YearsWithValues.First(c => c.Year == year).Value.value) * x;
         }
         private static async Task<List<Countrystats>> TryConn(int coa_id, int cat_id, int fromYear, int toYear)
@@ -146,12 +147,14 @@ namespace ki
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
-           var liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } };
+                var liste = new List<Countrystats>() { new Countrystats() { Country = new Country("austria"), ListWithCategoriesWithYearsAndValues = new List<CategoriesWithYearsAndValues>() { new CategoriesWithYearsAndValues() { YearsWithValues = new List<YearWithValue>() { new YearWithValue() { Year = 1960, Value = new Wert(1000f) } } } } } };
                 return liste;
             }
         }
-        private static List<Response> ConvertDataToRespond(List<Countrystats> list)
+        private static Response ConvertDataToRespond(List<Countrystats> list)
         {
+            Response response = new Response();
+            List<Response.ValuePair> valuePairs = new List<Response.ValuePair>();
             List<Response> listWithResponse = new List<Response>();
             if (list.Any(x=>x.ListWithCategoriesWithYearsAndValues.Any(y=>y.YearsWithValues.Count>0)))
             {
@@ -161,8 +164,8 @@ namespace ki
                     {
                         foreach (var jahreMitWerten in kategorieMitJahrenWerten.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                         {
-
-                            listWithResponse.Add(new Response() { value = jahreMitWerten.Value.value, year = jahreMitWerten.Year, berechnet = jahreMitWerten.Value.berechnet });
+                            valuePairs.Add(new Response.ValuePair(jahreMitWerten.Value.berechnet, jahreMitWerten.Year, jahreMitWerten.Value.value));
+                       
                         }
                     }
 
@@ -172,8 +175,8 @@ namespace ki
             {
                 listWithResponse.Add(new Response());
             }
-          
-            return listWithResponse;
+            response.valuePair = valuePairs;
+             return response;
         }
       
         static void PrintList(List<Countrystats> liste)

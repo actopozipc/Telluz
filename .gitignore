@@ -156,3 +156,4 @@ ki/packages/System.Threading.Tasks.Dataflow.4.8.0/THIRD-PARTY-NOTICES.TXT
 ki/packages/System.Threading.Tasks.Dataflow.4.8.0/useSharedDesignerContext.txt
 ki/packages/System.Threading.Tasks.Dataflow.4.8.0/version.txt
 ki/ki/App.config
+*.txt

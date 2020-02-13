@@ -157,3 +157,7 @@ ki/packages/System.Threading.Tasks.Dataflow.4.8.0/useSharedDesignerContext.txt
 ki/packages/System.Threading.Tasks.Dataflow.4.8.0/version.txt
 ki/ki/App.config
 *.txt
+ki/ki/bin/Debug/ki.exe.config
+*.config
+ki/ki/bin/Debug/ki.exe.config
+*.config

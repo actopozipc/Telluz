@@ -79,7 +79,7 @@ namespace ki
                             {
                                 case type.Daten:
                                     liste = await TryConn(request.coa_id, request.cat_id, request.from, request.to);
-                                    response = ConvertDataToRespond(liste);
+                                    response = ConvertDataToResponse(liste);
                                     break;
                                 case type.Bild:
                                     int coaid;
@@ -99,8 +99,12 @@ namespace ki
                                         liste = await TryConn(coaid, request.cat_id, request.from, request.to);
                                         //Wert(e) normieren
                                         //normiertes request.to returnen
-                                     
-                                        response = ConvertDataToRespond(liste);
+                                    
+                                        response = ConvertDataToResponse(liste);
+                                        if (liste[0].ListWithCategoriesWithYearsAndValues[0].YearsWithValues.Count)
+                                        {
+
+                                        }
                                         response.colorVal = GetColorValueFromOriginalValue(liste, request.to);
 
                                     }
@@ -118,6 +122,7 @@ namespace ki
                         }
                         
                     }
+                    client.Close();
                 }
             }
         }
@@ -151,7 +156,7 @@ namespace ki
                 return liste;
             }
         }
-        private static Response ConvertDataToRespond(List<Countrystats> list)
+        private static Response ConvertDataToResponse(List<Countrystats> list)
         {
             Response response = new Response();
             List<Response.ValuePair> valuePairs = new List<Response.ValuePair>();

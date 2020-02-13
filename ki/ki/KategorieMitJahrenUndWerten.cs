@@ -14,6 +14,7 @@ namespace ki
         {
             this.category = category;
             this.YearsWithValues = YearsWithValues;
+            
         }
         public CategoriesWithYearsAndValues(string category, Task<List<YearWithValue>> YearsWithValuesTask)
         {

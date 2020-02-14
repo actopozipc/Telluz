@@ -4,10 +4,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Configuration;
 using System.Globalization;
+using Microsoft.ML;
 
 namespace ki{
     class DB{
-         static SqlConnection connection = null;
         static string ki_read_input = ConfigurationManager.ConnectionStrings["ki_read_input"].ConnectionString;
         static string ki_read_output = ConfigurationManager.ConnectionStrings["ki_read_output"].ConnectionString;
         static string ki_write_output = ConfigurationManager.ConnectionStrings["ki_write_output"].ConnectionString;
@@ -157,6 +157,10 @@ namespace ki{
 
             }
 
+        }
+        public void SaveModel(Model model, int coa_id, int cat_id)
+        {
+            model.mLContext.Model.Save(model.trainedModel, model.data.Schema, $"{coa_id}-{cat_id}.zip");
         }
         public async Task SaveParameterAsync(ParameterStorage parameterStorage, int coa_id, int cat_id, double loss)
         {

@@ -148,6 +148,7 @@
     <Compile Include="Input.cs" />
     <Compile Include="JahreMitWerten.cs" />
     <Compile Include="KategorieMitJahrenUndWerten.cs" />
+    <Compile Include="Model.cs" />
     <Compile Include="Neuron.cs" />
     <Compile Include="ParameterStorage.cs" />
     <Compile Include="Program.cs" />

@@ -101,11 +101,15 @@ namespace ki
                                         //normiertes request.to returnen
                                     
                                         response = ConvertDataToResponse(liste);
-                                        if (liste[0].ListWithCategoriesWithYearsAndValues[0].YearsWithValues.Count)
+                                        if (liste.Any(x=>x.doesContainAnyValues()))
                                         {
-
+                                            response.colorVal = GetColorValueFromOriginalValue(liste, request.to);
                                         }
-                                        response.colorVal = GetColorValueFromOriginalValue(liste, request.to);
+                                        else
+                                        {
+                                            response.errorMessage = "No values in category";
+                                        }
+                                       
 
                                     }
                                     else //falls ungültiger ISO code

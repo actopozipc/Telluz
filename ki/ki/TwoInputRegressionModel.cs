@@ -11,11 +11,12 @@ namespace ki
     {
         [LoadColumn(2)]
         public float Population;
-        [LoadColumn(4)]
+        [LoadColumn(1)]
         public float Year;
 
-        [LoadColumn(6)]
+        [LoadColumn(3)]
         public float Co2;
+    
     }
     public class TwoInputRegressionPrediction
     {

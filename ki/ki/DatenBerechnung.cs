@@ -1,5 +1,6 @@
 ﻿using CNTK;
 using Microsoft.ML;
+using Microsoft.ML.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -49,7 +50,7 @@ namespace ki
                     .Append(mlContext.Transforms.Concatenate("Features", "Year", "Population"))
                     // </Snippet9>
                     // <Snippet10>
-                    .Append(mlContext.Regression.Trainers.FastTree());
+                    .Append(mlContext.Regression.Trainers.Sdca());
             // </Snippet10>
 
             Console.WriteLine("1");
@@ -129,7 +130,7 @@ namespace ki
             {
                 listForTheNormalizedInputs.Add(item); //Small brain schleife?
             }
-            Input input = Standardization(listForTheNormalizedInputs, futureYear);
+            Input input = StandardizationYears(listForTheNormalizedInputs, futureYear);
             inputs = input.getAlleJahreNormiert();
             if (j < futureYear)
             {
@@ -144,7 +145,7 @@ namespace ki
                     {
                         fuckinghelpme.Add(item); //Small brain schleife?
                     }
-                    Input input2 = Standardization(fuckinghelpme, futureYear);
+                    Input input2 = StandardizationYears(fuckinghelpme, futureYear);
                     inputtemp = input2.getAlleJahreNormiert();
                     inputsMax = inputtemp.Max();
                 }
@@ -263,6 +264,15 @@ namespace ki
             {
                 population = await PredictPopulationAsync(coa_id, futureYear, population); //get population to predict emission
             }
+            TwoInputRegressionModel[] populationData = new TwoInputRegressionModel[population.Count];
+            for (int i = 0; i < populationData.Count(); i++)
+            {
+                populationData[i] = new TwoInputRegressionModel() { Year = population[i].Year, Population = population[i].Value.value };
+            }
+            PredictionEngine<TwoInputRegressionModel, TwoInputRegressionPrediction> predictionEngine = modelContainer.mLContext.Model.CreatePredictionEngine<TwoInputRegressionModel, TwoInputRegressionPrediction>(modelContainer.trainedModel);
+            IDataView inputData = modelContainer.mLContext.Data.LoadFromEnumerable(populationData);
+            IDataView predictions = modelContainer.trainedModel.Transform(inputData);
+            float[] scoreColumn = predictions.GetColumn<float>("Score").ToArray();
             //Use PredictCo2
             float max = emissions.Max(v => v.Year);
             while (max < futureYear)
@@ -520,7 +530,7 @@ namespace ki
             return m;
         }
 
-        Input Standardization(List<double> inputs, int Zukunftsjahr)
+    static   Input StandardizationYears(List<double> inputs, int Zukunftsjahr)
         {
             Input input = new Input();
             inputs = inputs.Distinct().ToList(); //Ich weiß dass ich ein Hashset verwenden könnte, aber ich weiß nicht ob sich das von der Performance lohnt. Add in Hashset = braucht länger als liste, dafür konsumiert liste.distinct zeit
@@ -540,6 +550,38 @@ namespace ki
                 input.AddJahr(item, i);
                 i = i + step;
             }
+            return input;
+        }
+      static  Input StandardizationValues(List<double> inputs, int Zukunftsjahr)
+        {
+            Input input = new Input();  
+            double count = inputs.Count;
+            double step = 1 / (count);
+            List<double> normierteWerte = new List<double>();
+            input.step = step;
+            double i = 0;
+            foreach (var item in inputs)
+            {
+                    input.AddWert(item, i);
+                    i = i + step;  
+               
+            }
+            return input;
+        }
+        static Input Standarization(List<YearWithValue> inputs, int Zukunftsjahr)
+        {
+            Input input = new Input();
+            List<double> years = new List<double>();
+            List<double> values = new List<double>();
+            foreach (var item in inputs)
+            {
+                years.Add(item.Year);
+                values.Add(item.Value.value);
+            }
+            Input inputYears = StandardizationYears(years, Zukunftsjahr);
+            Input inputValues = StandardizationValues(values, Zukunftsjahr);
+            input.SetYearsWithNorm(inputYears.GetYearsDic());
+            input.SetValuesWithNorm(inputValues.GetValuesDic());
             return input;
         }
 
@@ -619,6 +661,7 @@ namespace ki
         private async Task<List<YearWithValue>> TrainLinearMoreInputsMLNETAsync(List<YearWithValue> ListWithCO, List<YearWithValue> Population, int FutureYear)
         {
             MLContext mlContext = new MLContext(seed: 0);
+            ListWithCO = ListWithCO.Distinct().ToList();
             int coaid = await dB.GetCountryByNameAsync(ListWithCO.First(x => x.Name != null).Name);      //Inshallah ist in dieser liste nie kein name irgendwo
             int catid = ListWithCO.First(x => x.cat_id != 0).cat_id;
             List<TwoInputRegressionModel> inputs = new List<TwoInputRegressionModel>();
@@ -634,15 +677,24 @@ namespace ki
                 {
                     if (JahrMitPopulation.Year == tempyear)
                     {
-                        inputs.Add(new TwoInputRegressionModel() { Year = tempyear, Population = JahrMitPopulation.Value.value, Co2 = JahrMitCO.Value.value });
+                        inputs.Add(new TwoInputRegressionModel() { Year = tempyear , Population = JahrMitPopulation.Value.value , Co2 = JahrMitCO.Value.value  });
                     }
                 }
             }
-
+            List<Input> input = NormalizeTwoInputRegressionParameters(inputs, FutureYear);
+            float[] populationNorm = input.First(x => x.name == "population").getAlleWerteNormiert();
+            float[] emissionNorm = input.First(x => x.name == "emission").getAlleWerteNormiert();
+            float[] years = input[0].getAlleJahreNormiert();
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                inputs[i].Population = populationNorm[i];
+                inputs[i].Co2 = emissionNorm[i];
+                inputs[i].Year = years[i];
+            }
             Model modelContainer = Train(mlContext, inputs);
             var model = modelContainer.trainedModel;
-            double j = inputs.Max(i => i.Year);
-            if (j < FutureYear)
+            double j = input[0].GetYearsDic().First(x => x.Value == inputs.Max(y => y.Year)).Key;
+            if (j < FutureYear / 10000000)
             {
 
                 j++;
@@ -657,6 +709,15 @@ namespace ki
                     //    j++;
                     //}
                     //rekursives trainieren
+                    TwoInputRegressionModel[] populationData = new TwoInputRegressionModel[Population.Count];
+                    for (int i = 0; i < Population.Count; i++)
+                    {
+                        populationData[i] = new TwoInputRegressionModel() {Population = Population[i].Value.value, Year = Population[i].Year};
+                    }
+                    IDataView inputData = mlContext.Data.LoadFromEnumerable(populationData);
+                    IDataView predictions = model.Transform(inputData);
+                    float[] scoreColumn = predictions.GetColumn<float>("Score").ToArray();
+
                     ListWithCO.Add(PredictCo2(mlContext, model, (float)j, Population.First(x => x.Year == j).Value.value));
                     return await TrainLinearMoreInputsMLNETAsync(ListWithCO, Population, FutureYear);
 
@@ -678,6 +739,23 @@ namespace ki
             }
             dB.SaveModel(modelContainer, coaid, catid);
             return ListWithCO;
+        }
+       private static List<Input> NormalizeTwoInputRegressionParameters(List<TwoInputRegressionModel> inputs, int futureYear)
+        {
+            List<YearWithValue> population = new List<YearWithValue>();
+            List<YearWithValue> co2 = new List<YearWithValue>();
+            foreach (var item in inputs)
+            {
+                population.Add(new YearWithValue(item.Year, new Wert(item.Population)));
+        
+                co2.Add(new YearWithValue(item.Year, new Wert(item.Co2), "emission"));
+            }
+
+          List<Input> list = new List<Input>() { Standarization(population, futureYear), Standarization(co2, futureYear )};
+            list[0].name = "population";
+            list[1].name = "emission";
+            return list;
+
         }
         private static async Task<List<YearWithValue>> PredictPopulationAsync(int coaid, int futureYear, List<YearWithValue> population)
         {
@@ -716,7 +794,7 @@ namespace ki
             {
                 temp.Add(item); //Small brain schleife?
             }
-            Input input = Standardization(temp, FutureYear);
+            Input input = StandardizationYears(temp, FutureYear);
             inputs = input.getAlleJahreNormiert();
             float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
             //Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
@@ -796,7 +874,7 @@ namespace ki
                 inputs.Add(Convert.ToDouble(YearWithValue.Year));
                 outputs.Add(Convert.ToDouble(YearWithValue.Value.value) / (Math.Pow(10, multi)));
             }
-            Input input = Standardization(inputs, FutureYear);
+            Input input = StandardizationYears(inputs, FutureYear);
             Neuron hiddenNeuron1 = new Neuron();
             Neuron outputNeuron = new Neuron();
             hiddenNeuron1.randomizeWeights();
@@ -811,7 +889,7 @@ namespace ki
 
                 for (int i = 0; i < z; i++)
                 {
-                    hiddenNeuron1.inputs = input.getNormierterWert(inputs[i]);
+                    hiddenNeuron1.inputs = input.GetNormYear(inputs[i]);
                     outputNeuron.inputs = hiddenNeuron1.output;
                     outputNeuron.error = sigmoid.derived(outputNeuron.output) * (outputs[i] - outputNeuron.output);
                     outputNeuron.adjustWeights();
@@ -830,7 +908,7 @@ namespace ki
             //Dann Rekursion bis das größte Jahr nicht mehr kleiner ist als das Jahr bis zu dem wir rechnen wollen
             if (j < FutureYear)
             {
-                hiddenNeuron1.inputs = input.getNormierterWert(j) + input.step;
+                hiddenNeuron1.inputs = input.GetNormYear(j) + input.step;
                 outputNeuron.inputs = hiddenNeuron1.output;
                 KnownValues.Add(new YearWithValue((Math.Round((inputs[inputs.Count - 1] + 1))), new Wert((float)(outputNeuron.output * Convert.ToDouble(Math.Pow(10, multi))), true)));
                 return TrainSigmoid(KnownValues, FutureYear, multi);

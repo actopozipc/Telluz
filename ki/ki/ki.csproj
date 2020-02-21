@@ -142,12 +142,15 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AI.cs" />
+    <Compile Include="CNTK.cs" />
     <Compile Include="Country.cs" />
     <Compile Include="DatenBerechnung.cs" />
     <Compile Include="Disziplin.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="JahreMitWerten.cs" />
     <Compile Include="KategorieMitJahrenUndWerten.cs" />
+    <Compile Include="ML.cs" />
     <Compile Include="Model.cs" />
     <Compile Include="Neuron.cs" />
     <Compile Include="ParameterStorage.cs" />

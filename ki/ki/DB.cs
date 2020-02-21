@@ -24,7 +24,25 @@ namespace ki
         public DB()
         {
         }
-
+        public async Task<string> GetCountryNameByIDAsync(int coaId)
+        {
+            using (SqlConnection sql = new SqlConnection(ki_read_input))
+            {
+                sql.Open();
+                SqlCommand command = sql.CreateCommand();
+                command.CommandText = $"SELECT name FROM country_or_area WHERE coa_id = '{coaId}'; ";
+                Console.WriteLine(command.CommandText);
+                string coa_name = "";
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        coa_name = Convert.ToString(reader["name"]);
+                    }
+                }
+                return coa_name;
+            }
+        }
         public async Task<bool> CheckParametersAsync(int coaID, int catID)
         {
             using (SqlConnection sqlc = new SqlConnection(ki_read_output))

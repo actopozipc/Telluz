@@ -74,10 +74,7 @@ namespace ki
             }
             return yearWithValues;
         }
-        private int DifferentValuesCount(List<YearWithValue> values)
-        {
-            return values.Distinct().Count();
-        }
+
      public   static Input StandardizationYears(List<double> inputs, int Zukunftsjahr)
         {
             Input input = new Input();

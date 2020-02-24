@@ -91,21 +91,29 @@ namespace ki
                         //linear train
                         liste[i] = Task.Run(async () =>
                        {
-                           if (SingleCategoryData.Any(x => x.cat_id > 38 && x.cat_id < 46)) //if categoy is an emission-type
+                          
+                           if ((SingleCategoryData.Any(x => x.cat_id > 38 && x.cat_id < 46)) || SingleCategoryData.Any(x=>x.cat_id == 77)) //if categoy is an emission-type or temp
                            {
                                ML mL = new ML(dB);
                                if (dB.CheckModel(coaid, categ)) //check for model
                                {
                                    Model modelContainer = dB.LoadModel(coaid, categ);
-                                   List<YearWithValue> yearWithValues = await mL.PredictCo2OverYearsAsync(modelContainer, futureYear, coaid, SingleCategoryData, cNTK);
+                                   List<YearWithValue> yearWithValues = new List<YearWithValue>();
+                                   if (categ == 77) //if temp
+                                   {
+
+                                   }
+                                   else
+                                   {
+                                       yearWithValues = await mL.PredictCo2OverYearsAsync(modelContainer, futureYear, coaid, SingleCategoryData, cNTK);
+                                   }
                                    return yearWithValues;
 
                                }
                                else //calculate model
                                {
 
-                                   List<YearWithValue> x = await mL.TrainLinearMoreInputsMLNETAsync(SingleCategoryData, PopulationTotal, futureYear);
-                                   
+                                   List<YearWithValue> x = await mL.TrainAndPredictEmissionsAsync(SingleCategoryData, PopulationTotal, futureYear);
                                    return x;
                                }
 
@@ -119,7 +127,6 @@ namespace ki
                                {
                                    Console.WriteLine("Daten werden von Datenbank genommen");
                                    ParameterStorage parStor = await dB.GetParameterAsync(coaid, categ); //Bekomme Parameter
-
                                    List<YearWithValue> yearWithValues = new List<YearWithValue>();
                                    foreach (var item in countrystats.ListWithCategoriesWithYearsAndValues[i - 1].YearsWithValues)
                                    {

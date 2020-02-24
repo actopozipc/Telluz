@@ -167,7 +167,6 @@
     </None>
     <None Include="ClassDiagram1.cd" />
     <None Include="packages.config" />
-    <Compile Include="ListenForRequests.cs" />
     <Compile Include="DB.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

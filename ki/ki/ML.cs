@@ -14,7 +14,19 @@ namespace ki
         {
             this.dB = dB;
         }
-        public static Model Train(MLContext mlContext, List<EmissionModel> inputs)
+        public static Model TrainTemp(MLContext mLContext, List<TempModel> inputs)
+        {
+            IDataView dataView = mLContext.Data.LoadFromEnumerable<TempModel>(inputs);
+            IEstimator<ITransformer> pipeline = mLContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: "temp")
+                                                .Append(mLContext.Transforms.Concatenate("Features", "Year", "lastYearValue", "longitude", "latitude"))
+                                                .Append(mLContext.Regression.Trainers.Sdca(maximumNumberOfIterations: 2000));
+            Console.WriteLine("1");
+            ITransformer model = pipeline.Fit(dataView);
+            Console.WriteLine("2");
+            return new Model(model, mLContext, dataView);
+
+        }
+        public static Model TrainEmission(MLContext mlContext, List<EmissionModel> inputs)
         {
 
             IDataView dataView = mlContext.Data.LoadFromEnumerable<EmissionModel>(inputs);
@@ -40,6 +52,10 @@ namespace ki
             var predictions = modelContainer.trainedModel.Transform(modelContainer.data);
             var metrics = modelContainer.mLContext.Regression.Evaluate(predictions, "Label", "Score");
             return metrics.RSquared;
+        }
+        public async Task<List<YearWithValue>> PredictTempOverYearsAsync(Model modelContainer, int futureYear, List<YearWithValue> temp)
+        {
+
         }
         public async Task<List<YearWithValue>> PredictCo2OverYearsAsync(Model modelContainer, int futureYear, int coa_id, List<YearWithValue> emissions, CNTK cNTK)
         {
@@ -74,8 +90,22 @@ namespace ki
             var prediction = predictionFunction.Predict(test);
             return new YearWithValue(year, new Wert(prediction.Co2, true));
         }
-        //für alle möglichen gase
-        public async Task<List<YearWithValue>> TrainLinearMoreInputsMLNETAsync(List<YearWithValue> ListWithCO, List<YearWithValue> Population, int FutureYear)
+        public async Task<List<YearWithValue>> TrainAndPredictTempAsync(List<YearWithValue> tempList, Country country)
+        {
+            MLContext mLContext = new MLContext(seed: 0);
+            List<TempModel> inputs = new List<TempModel>();
+            float lat = country.latitude;
+            float lon = country.longitude;
+            for (int i = 1; i < tempList.Count; i++)
+            {
+                TempModel tempModel = new TempModel() { temp = tempList[i].Value.value, year = tempList[i].Year, lastYearValue = tempList[i-1].Value.value, longitude = lon, latitude = lat  };
+                inputs.Add(tempModel);
+            }
+            Model modelContainer = TrainTemp(mLContext, inputs);
+
+        }
+        //for all kind of gases
+        public async Task<List<YearWithValue>> TrainAndPredictEmissionsAsync(List<YearWithValue> ListWithCO, List<YearWithValue> Population, int FutureYear)
         {
             MLContext mlContext = new MLContext(seed: 0);
             ListWithCO = ListWithCO.Distinct().ToList();
@@ -100,7 +130,7 @@ namespace ki
                 }
 
             }
-            Model modelContainer = Train(mlContext, inputs);
+            Model modelContainer = TrainEmission(mlContext, inputs);
           //  dB.SaveModelAsParameter(modelContainer, coaid, catid, GetErrorMLNet(modelContainer));
             var model = modelContainer.trainedModel;
             double j = inputs.Max(x => x.Year); 

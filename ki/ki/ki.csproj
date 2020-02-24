@@ -157,7 +157,8 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="sigmoid.cs" />
-    <Compile Include="TwoInputRegressionModel.cs" />
+    <Compile Include="EmissionModel.cs" />
+    <Compile Include="TempModel.cs" />
     <Compile Include="Value.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -105,6 +105,7 @@ namespace ki
                                {
 
                                    List<YearWithValue> x = await mL.TrainLinearMoreInputsMLNETAsync(SingleCategoryData, PopulationTotal, futureYear);
+                                   
                                    return x;
                                }
 

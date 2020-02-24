@@ -1,10 +1,12 @@
 using Microsoft.ML;
+using Microsoft.ML.Trainers;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data.SqlClient;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ki
@@ -295,6 +297,18 @@ namespace ki
         private string GenerateFileNameForModel(int coa_id, int cat_id)
         {
             return $"{coa_id}-{cat_id}.zip";
+        }
+        public void SaveModelAsParameter(Model modelContainer, int coa_id, int cat_id, double loss)
+        {
+            ITransformer model = modelContainer.trainedModel;
+            IEnumerable<ITransformer> chain = model as IEnumerable<ITransformer>;
+
+            ISingleFeaturePredictionTransformer<object> predictionTransformer =
+                chain.Last() as ISingleFeaturePredictionTransformer<object>;
+
+            object modelParameters = predictionTransformer.Model;
+            ParameterStorage ps = new ParameterStorage();
+            Console.WriteLine();
         }
         public async Task SaveParameterAsync(ParameterStorage parameterStorage, int coa_id, int cat_id, double loss)
         {

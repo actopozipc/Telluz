@@ -72,6 +72,33 @@ namespace ki
 
             return false;
         }
+        /// <summary>
+        /// Returns List of all Countries with Coordinates and name
+        /// </summary>
+      public async Task<List<Country>> GetAllCountriesAsync()
+        {
+            List<Country> countries = new List<Country>();
+            using (SqlConnection sql = new SqlConnection(ki_read_input))
+            {
+              await sql.OpenAsync();
+                SqlCommand command = sql.CreateCommand();
+                command.CommandText = "SELECT * FROM country_or_area WHERE lat != 0;";
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        int coa_id = Convert.ToInt32(reader["coa_id"]);
+                        string coa_key = Convert.ToString(reader["coa_key"]);
+                        string name = Convert.ToString(reader["name"]);
+                        float lat = Convert.ToInt64(reader["lat"]);
+                        float lon = Convert.ToInt64(reader["lon"]);
+                        countries.Add(new Country(name, coa_key, lon, lat) { coa_id = coa_id });
+                    }
+                }
+            }
+            return countries;
+        }
+
 
         /// <summary>
         /// Returns categorys with all years and values of a single country

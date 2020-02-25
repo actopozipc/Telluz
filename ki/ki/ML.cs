@@ -18,7 +18,8 @@ namespace ki
         {
             IDataView dataView = mLContext.Data.LoadFromEnumerable<TempModel>(inputs);
             IEstimator<ITransformer> pipeline = mLContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: "temp")
-                                                .Append(mLContext.Transforms.Concatenate("Features", "Year", "lastYearValue", "longitude", "latitude"))
+                                                .Append(mLContext.Transforms.Concatenate("Features", "year", "lastYearValue"))
+                                                .Append(mLContext.Transforms.Concatenate("Features2", "longitude", "latitude"))
                                                 .Append(mLContext.Regression.Trainers.Sdca(maximumNumberOfIterations: 2000));
             Console.WriteLine("1");
             ITransformer model = pipeline.Fit(dataView);
@@ -53,9 +54,14 @@ namespace ki
             var metrics = modelContainer.mLContext.Regression.Evaluate(predictions, "Label", "Score");
             return metrics.RSquared;
         }
-        public async Task<List<YearWithValue>> PredictTempOverYearsAsync(Model modelContainer, int futureYear, List<YearWithValue> temp)
+        public async Task<List<YearWithValue>> PredictTempOverYearsAsync(Model modelContainer, int futureYear, List<YearWithValue> temp, Country country)
         {
-
+            TempModel[] tempModels = new TempModel[temp.Count];
+            for (int i = 1; i <= temp.Count; i++)
+            {
+                tempModels[i - 1] = new TempModel() { temp = temp[i].Value.value, lastYearValue = temp[i-1].Value.value, year= temp[i].Year };
+            }
+            return new List<YearWithValue>();
         }
         public async Task<List<YearWithValue>> PredictCo2OverYearsAsync(Model modelContainer, int futureYear, int coa_id, List<YearWithValue> emissions, CNTK cNTK)
         {
@@ -90,21 +96,48 @@ namespace ki
             var prediction = predictionFunction.Predict(test);
             return new YearWithValue(year, new Wert(prediction.Co2, true));
         }
-        public async Task<List<YearWithValue>> TrainAndPredictTempAsync(List<YearWithValue> tempList, Country country)
+        public async Task<List<YearWithValue>> TrainTempModelAsync(Country country)
         {
-            MLContext mLContext = new MLContext(seed: 0);
-            List<TempModel> inputs = new List<TempModel>();
-            float lat = country.latitude;
-            float lon = country.longitude;
-            for (int i = 1; i < tempList.Count; i++)
+            List<Countrystats> countrystats = new List<Countrystats>(); //list with countries and temp values
+            //create list with all countries
+            List<Country> countries = await dB.GetAllCountriesAsync();
+            //get temp and connect to country
+            for (int i = 0; i < countries.Count; i++)
             {
-                TempModel tempModel = new TempModel() { temp = tempList[i].Value.value, year = tempList[i].Year, lastYearValue = tempList[i-1].Value.value, longitude = lon, latitude = lat  };
-                inputs.Add(tempModel);
+                Countrystats stat = new Countrystats();
+                stat.Country = countries[i];
+                stat.ListWithCategoriesWithYearsAndValues = await dB.GetCategoriesWithValuesAndYearsAsync(countries[i].name, new List<int>() { 77 });
+                countrystats.Add(stat);
             }
-            Model modelContainer = TrainTemp(mLContext, inputs);
+            //Create Model
+            MLContext mLContext = new MLContext(seed: 0);
+            List<TempModel> temps = new List<TempModel>();
+            for (int i = 0; i < countrystats.Count; i++)
+            {
+                var catlist = countrystats[i].ListWithCategoriesWithYearsAndValues;
+                for (int j = 0; j < catlist.Count; j++) //catlist.count should be 1 anyway
+                {
+                    var valuelist = catlist[j].YearsWithValues;
+                    for (int k = 1; k < valuelist.Count; k++)
+                    {
+                        temps.Add(new TempModel() 
+                        { latitude = countrystats[i].Country.latitude, longitude = countrystats[i].Country.longitude, 
+                         temp = valuelist[k].Value.value, lastYearValue = valuelist[k-1].Value.value, year = valuelist[k].Year 
+                        });
+                    }
+
+                   
+                }
+            }
+            //Speichere Modell
+            Model modelContainer = TrainTemp(mLContext, temps);
+            
+            //Verwende Modell um 
+            return new List<YearWithValue>();
+          
 
         }
-        //for all kind of gases
+        //for all kind of gas
         public async Task<List<YearWithValue>> TrainAndPredictEmissionsAsync(List<YearWithValue> ListWithCO, List<YearWithValue> Population, int FutureYear)
         {
             MLContext mlContext = new MLContext(seed: 0);

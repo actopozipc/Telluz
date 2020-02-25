@@ -101,7 +101,7 @@ namespace ki
                                    List<YearWithValue> yearWithValues = new List<YearWithValue>();
                                    if (categ == 77) //if temp
                                    {
-
+                                      await mL.TrainTempModelAsync(countrystats.Country);
                                    }
                                    else
                                    {
@@ -112,7 +112,10 @@ namespace ki
                                }
                                else //calculate model
                                {
-
+                                   if (categ == 77) //if temp
+                                   {
+                                       await mL.TrainTempModelAsync(countrystats.Country);
+                                   }
                                    List<YearWithValue> x = await mL.TrainAndPredictEmissionsAsync(SingleCategoryData, PopulationTotal, futureYear);
                                    return x;
                                }

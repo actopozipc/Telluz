@@ -91,67 +91,80 @@ namespace ki
                         //linear train
                         liste[i] = Task.Run(async () =>
                        {
-                          
-                           if ((SingleCategoryData.Any(x => x.cat_id > 38 && x.cat_id < 46)) || SingleCategoryData.Any(x=>x.cat_id == 77)) //if categoy is an emission-type or temp
+                           if (await dB.GetMaxYearAsync(coaid, categ) >= futureYear) //if all wanted values are already known
                            {
-                               ML mL = new ML(dB);
-                               if (dB.CheckModel(coaid, categ)) //check for model
+                               return SingleCategoryData;
+                           }
+                           else
+                           {
+                               if ((SingleCategoryData.Any(x => x.cat_id > 38 && x.cat_id < 46)) || SingleCategoryData.Any(x => x.cat_id == 77)) //if categoy is an emission-type or temp
                                {
-                                   Model modelContainer = dB.LoadModel(coaid, categ);
-                                   List<YearWithValue> yearWithValues = new List<YearWithValue>();
-                                   if (categ == 77) //if temp
+                                   ML mL = new ML(dB);
+                                   if (dB.CheckModel(coaid, categ)) //check for model
                                    {
-                                      await mL.TrainTempModelAsync(countrystats.Country);
+                                       Model modelContainer = dB.LoadModel(coaid, categ);
+                                       List<YearWithValue> yearWithValues = new List<YearWithValue>();
+                                       if (categ == 77) //if temp
+                                       {
+                                           await mL.TrainTempModelAsync(countrystats.Country);
+                                       }
+                                       else
+                                       {
+                                           yearWithValues = await mL.PredictCo2OverYearsAsync(modelContainer, futureYear, coaid, SingleCategoryData, cNTK);
+                                       }
+                                       return yearWithValues;
+
+                                   }
+                                   else //calculate model
+                                   {
+                                       if (categ == 77) //if temp
+                                       {
+                                           Model model = await mL.TrainTempModelAsync(countrystats.Country);
+                                           List<YearWithValue> x = await mL.PredictTempOverYearsAsync(model, futureYear, SingleCategoryData, countrystats.Country);
+                                           return x;
+                                       }
+                                       else
+                                       {
+                                           List<YearWithValue> x = await mL.TrainAndPredictEmissionsAsync(SingleCategoryData, PopulationTotal, futureYear);
+                                           return x;
+                                       }
+
+                                   }
+
+
+                               }
+                               else //if category is non-emission and no temp
+                               {
+
+                                   bool parameterExists = await dB.CheckParametersAsync(coaid, categ); //check if parameter for this country and this category exist
+                                   if (parameterExists)
+                                   {
+                                       Console.WriteLine("Daten werden von Datenbank genommen");
+                                       ParameterStorage parStor = await dB.GetParameterAsync(coaid, categ); //Bekomme Parameter
+                                       List<YearWithValue> yearWithValues = new List<YearWithValue>();
+                                       foreach (var item in countrystats.ListWithCategoriesWithYearsAndValues[i - 1].YearsWithValues)
+                                       {
+                                           yearWithValues.Add(new YearWithValue(item.Year, new Wert(Convert.ToDecimal(item.Value.value)), countrystats.Country.name, item.cat_id));
+                                       }
+                                       yearWithValues = RemoveZero(yearWithValues);
+                                       yearWithValues = cNTK.Predict(yearWithValues, from, futureYear, parStor);
+                                       return yearWithValues;
+
                                    }
                                    else
                                    {
-                                       yearWithValues = await mL.PredictCo2OverYearsAsync(modelContainer, futureYear, coaid, SingleCategoryData, cNTK);
+                                       CNTK cNTK = new CNTK(dB);
+                                       List<YearWithValue> x = await cNTK.TrainLinearOneOutputAsync(SingleCategoryData, futureYear);
+                                       if (SingleCategoryData.Any(a => a.cat_id == 4))
+                                       {
+
+                                           PopulationTotal = x;
+                                       }
+                                       return PopulationTotal;
                                    }
-                                   return yearWithValues;
-
-                               }
-                               else //calculate model
-                               {
-                                   if (categ == 77) //if temp
-                                   {
-                                       await mL.TrainTempModelAsync(countrystats.Country);
-                                   }
-                                   List<YearWithValue> x = await mL.TrainAndPredictEmissionsAsync(SingleCategoryData, PopulationTotal, futureYear);
-                                   return x;
-                               }
-
-
-                           }
-                           else //if category is non-emission and no temp
-                           {
-
-                               bool parameterExists = await dB.CheckParametersAsync(coaid, categ); //check if parameter for this country and this category exist
-                               if (parameterExists)
-                               {
-                                   Console.WriteLine("Daten werden von Datenbank genommen");
-                                   ParameterStorage parStor = await dB.GetParameterAsync(coaid, categ); //Bekomme Parameter
-                                   List<YearWithValue> yearWithValues = new List<YearWithValue>();
-                                   foreach (var item in countrystats.ListWithCategoriesWithYearsAndValues[i - 1].YearsWithValues)
-                                   {
-                                       yearWithValues.Add(new YearWithValue(item.Year, new Wert(Convert.ToDecimal(item.Value.value)), countrystats.Country.name, item.cat_id));
-                                   }
-                                   yearWithValues = RemoveZero(yearWithValues);
-                                   yearWithValues = cNTK.Predict(yearWithValues, from, futureYear, parStor);
-                                   return yearWithValues;
-
-                               }
-                               else
-                               {
-                                   CNTK cNTK = new CNTK(dB);
-                                   List<YearWithValue> x = await cNTK.TrainLinearOneOutputAsync(SingleCategoryData, futureYear);
-                                   if (SingleCategoryData.Any(a => a.cat_id == 4))
-                                   {
-
-                                       PopulationTotal = x;
-                                   }
-                                   return PopulationTotal;
                                }
                            }
+                        
 
                            // 
                        });

@@ -26,11 +26,30 @@ namespace ki
         public DB()
         {
         }
+        public async Task<int> GetMaxYearAsync(int coaID, int catID)
+        {
+            int max = 0;
+            using (SqlConnection sql = new SqlConnection(ki_read_input))
+            {
+               await sql.OpenAsync();
+                SqlCommand sqlCommand = sql.CreateCommand();
+                sqlCommand.CommandText = $"SELECT MAX(year) AS max FROM input_data WHERE coa_id = {coaID} AND cat_id = {catID};";
+                Console.WriteLine(sqlCommand.CommandText);
+                using (SqlDataReader reader = await sqlCommand.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        max = Convert.ToInt32(reader["max"]);
+                    }
+                }
+            }
+            return max;
+        }
         public async Task<string> GetCountryNameByIDAsync(int coaId)
         {
             using (SqlConnection sql = new SqlConnection(ki_read_input))
             {
-                sql.Open();
+              await sql.OpenAsync();
                 SqlCommand command = sql.CreateCommand();
                 command.CommandText = $"SELECT name FROM country_or_area WHERE coa_id = '{coaId}'; ";
                 Console.WriteLine(command.CommandText);

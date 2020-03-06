@@ -59,9 +59,21 @@ namespace ki
             TempModel[] tempModels = new TempModel[temp.Count];
             for (int i = 1; i <= temp.Count; i++)
             {
-                tempModels[i - 1] = new TempModel() { temp = temp[i].Value.value, lastYearValue = temp[i-1].Value.value, year= temp[i].Year };
+                tempModels[i - 1] = new TempModel() { temp = temp[i-1].Value.value, lastYearValue = temp[i - 1].Value.value, year = temp[i-1].Year };
+
             }
-            return new List<YearWithValue>();
+            if (CompareBiggestValueToFutureYear(temp,futureYear))
+            {
+                PredictionEngine<TempModel, TempPrediction> predictionEngine = modelContainer.mLContext.Model.CreatePredictionEngine<TempModel, TempPrediction>(modelContainer.trainedModel);
+                IDataView inputData = modelContainer.mLContext.Data.LoadFromEnumerable(tempModels);
+                IDataView predictions = modelContainer.trainedModel.Transform(inputData);
+                float[] scoreColumn = predictions.GetColumn<float>("Score").ToArray();
+                temp.Add(new YearWithValue(temp.Max(x => x.Year) + 1, new Wert(scoreColumn[scoreColumn.Length-1], true)));
+                return await PredictTempOverYearsAsync(modelContainer, futureYear, temp, country);
+            }
+
+
+            return temp;
         }
         public async Task<List<YearWithValue>> PredictCo2OverYearsAsync(Model modelContainer, int futureYear, int coa_id, List<YearWithValue> emissions, CNTK cNTK)
         {
@@ -96,7 +108,7 @@ namespace ki
             var prediction = predictionFunction.Predict(test);
             return new YearWithValue(year, new Wert(prediction.Co2, true));
         }
-        public async Task<List<YearWithValue>> TrainTempModelAsync(Country country)
+        public async Task<Model> TrainTempModelAsync(Country country)
         {
             List<Countrystats> countrystats = new List<Countrystats>(); //list with countries and temp values
             //create list with all countries
@@ -131,10 +143,10 @@ namespace ki
             }
             //Speichere Modell
             Model modelContainer = TrainTemp(mLContext, temps);
-            
+
             //Verwende Modell um 
-            return new List<YearWithValue>();
-          
+
+            return modelContainer;
 
         }
         //for all kind of gas

@@ -16,7 +16,7 @@ namespace ki
 
         public bool doesContainAnyValues()
         {
-            if (ListWithCategoriesWithYearsAndValues.Count>1)
+            if (ListWithCategoriesWithYearsAndValues.Count>=1)
             {
                 foreach (var item in ListWithCategoriesWithYearsAndValues)
                 {

@@ -10,7 +10,8 @@ Telluz is a project in which forecasts of climate-relevant data are made using a
 * Change processor architecture and debug / build to x64
 * Connection string is never updated
 ## Built With
-[ML.NET](https://github.com/dotnet/machinelearning)
+[ML.NET](https://github.com/dotnet/machinelearning)  
+
 [CNTK](https://github.com/microsoft/CNTK)
 
 ## Known Bugs

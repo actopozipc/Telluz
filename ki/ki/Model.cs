@@ -13,7 +13,7 @@ namespace ki
     class Model
     {
        public ITransformer trainedModel { get; set; }
- 
+        public Category category { get; set; }
         public IDataView data { get; set; }
       public  MLContext mLContext { get; set; }
 

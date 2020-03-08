@@ -78,7 +78,7 @@ namespace ki
                 if (SingleCategoryData.Count > 1)
                 {
                     int coaid = await dB.GetCountryByNameAsync(country); //numeric of country
-                    int categ = await dB.GetCategoryByNameAsync(countrystats.ListWithCategoriesWithYearsAndValues[i].category); //numeric of category
+                    int categ = await dB.GetCategoryByNameAsync(countrystats.ListWithCategoriesWithYearsAndValues[i].category.name); //numeric of category
                     //Bearbeite eigenen Datensatz
                     int multi = Scale(SingleCategoryData) - 1; //wie viel man die normierten werte mulitplizieren muss damit sie wieder echt sind
 
@@ -102,14 +102,17 @@ namespace ki
                                    ML mL = new ML(dB);
                                    if (dB.CheckModel(coaid, categ)) //check for model
                                    {
-                                       Model modelContainer = dB.LoadModel(coaid, categ);
+                                      
                                        List<YearWithValue> yearWithValues = new List<YearWithValue>();
                                        if (categ == 77) //if temp
                                        {
-                                           await mL.TrainTempModelAsync(countrystats.Country);
+                                           Model model = dB.LoadModel(0, 77);
+                                          yearWithValues = await mL.PredictTempOverYearsAsync(model, futureYear, SingleCategoryData, countrystats.Country);
+                                           return yearWithValues;
                                        }
                                        else
                                        {
+                                           Model modelContainer = dB.LoadModel(coaid, categ);
                                            yearWithValues = await mL.PredictCo2OverYearsAsync(modelContainer, futureYear, coaid, SingleCategoryData, cNTK);
                                        }
                                        return yearWithValues;

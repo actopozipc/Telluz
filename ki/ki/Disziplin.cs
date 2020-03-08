@@ -28,5 +28,10 @@ namespace ki
             }
             return false;
         }
+        public bool isCategoryDefined()
+        {
+          return  this.ListWithCategoriesWithYearsAndValues.Any(x => x.category != null);
+        }
     }
+    
 }

@@ -31,7 +31,7 @@ namespace ki
             int max = 0;
             using (SqlConnection sql = new SqlConnection(ki_read_input))
             {
-               await sql.OpenAsync();
+                await sql.OpenAsync();
                 SqlCommand sqlCommand = sql.CreateCommand();
                 sqlCommand.CommandText = $"SELECT MAX(year) AS max FROM input_data WHERE coa_id = {coaID} AND cat_id = {catID};";
                 Console.WriteLine(sqlCommand.CommandText);
@@ -49,7 +49,7 @@ namespace ki
         {
             using (SqlConnection sql = new SqlConnection(ki_read_input))
             {
-              await sql.OpenAsync();
+                await sql.OpenAsync();
                 SqlCommand command = sql.CreateCommand();
                 command.CommandText = $"SELECT name FROM country_or_area WHERE coa_id = '{coaId}'; ";
                 Console.WriteLine(command.CommandText);
@@ -94,12 +94,12 @@ namespace ki
         /// <summary>
         /// Returns List of all Countries with Coordinates and name
         /// </summary>
-      public async Task<List<Country>> GetAllCountriesAsync()
+        public async Task<List<Country>> GetAllCountriesAsync()
         {
             List<Country> countries = new List<Country>();
             using (SqlConnection sql = new SqlConnection(ki_read_input))
             {
-              await sql.OpenAsync();
+                await sql.OpenAsync();
                 SqlCommand command = sql.CreateCommand();
                 command.CommandText = "SELECT * FROM country_or_area WHERE lat != 0;";
                 using (SqlDataReader reader = await command.ExecuteReaderAsync())
@@ -139,7 +139,7 @@ namespace ki
                 {
                     CategoriesWithYearsAndValues kmjw = new CategoriesWithYearsAndValues
                     {
-                        category = item
+                        category = new Category(item)
                     };
                     command.CommandText = $"SELECT year, ROUND(value,5) AS ROUND, c.cat_id FROM input_data JOIN category c on input_data.cat_id = c.cat_id JOIN country_or_area coa on input_data.coa_id = coa.coa_id WHERE c.name = '{item}' AND coa.name = '{country}';";
                     Console.WriteLine(command.CommandText);
@@ -323,7 +323,15 @@ namespace ki
         }
         public void SaveModel(Model model, int coa_id, int cat_id)
         {
-            model.mLContext.Model.Save(model.trainedModel, model.data.Schema,GenerateFileNameForModel(coa_id, cat_id));
+            model.mLContext.Model.Save(model.trainedModel, model.data.Schema, GenerateFileNameForModel(coa_id, cat_id));
+            //not working
+            //using (FileStream fs = new FileStream("test.onnx", FileMode.OpenOrCreate))
+            //{
+            //    Microsoft.ML.OnnxExportExtensions.ConvertToOnnx(model.mLContext.Model, model.trainedModel, model.data, fs);
+            //}
+
+
+
         }
         public bool CheckModel(int coa_id, int cat_id)
         {
@@ -333,8 +341,13 @@ namespace ki
         {
             MLContext mL = new MLContext();
             DataViewSchema schema;
-            ITransformer predictionPipeline= mL.Model.Load(GenerateFileNameForModel(coa_id, cat_id), out schema);
+            ITransformer predictionPipeline = mL.Model.Load(GenerateFileNameForModel(coa_id, cat_id), out schema);
             return new Model(predictionPipeline, mL);
+
+        }
+        public Model LoadTempModel()
+        {
+            return LoadModel(0, 77);
         }
         /// <summary>
         /// Das ist nur sehr wenig code, aber falls ich die Namenskonvention von den files ändern möchte/muss kann ich das direkt in einer Methode erledigen

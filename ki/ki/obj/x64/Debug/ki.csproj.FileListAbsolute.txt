@@ -474,3 +474,7 @@ C:\Users\Windowsfus\Documents\GitHub\Telluz\ki\ki\obj\x64\Debug\ki.exe.config
 C:\Users\Windowsfus\Documents\GitHub\Telluz\ki\ki\obj\x64\Debug\ki.csproj.CopyComplete
 C:\Users\Windowsfus\Documents\GitHub\Telluz\ki\ki\obj\x64\Debug\ki.exe
 C:\Users\Windowsfus\Documents\GitHub\Telluz\ki\ki\obj\x64\Debug\ki.pdb
+C:\Users\paralysat\Documents\GitHub\Telluz\ki\ki\bin\x64\Debug\Google.Protobuf.dll
+C:\Users\paralysat\Documents\GitHub\Telluz\ki\ki\bin\x64\Debug\Microsoft.ML.OnnxConverter.dll
+C:\Users\paralysat\Documents\GitHub\Telluz\ki\ki\bin\x64\Debug\Google.Protobuf.xml
+C:\Users\paralysat\Documents\GitHub\Telluz\ki\ki\bin\x64\Debug\Microsoft.ML.OnnxConverter.xml

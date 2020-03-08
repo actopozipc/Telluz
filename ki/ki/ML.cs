@@ -18,8 +18,7 @@ namespace ki
         {
             IDataView dataView = mLContext.Data.LoadFromEnumerable<TempModel>(inputs);
             IEstimator<ITransformer> pipeline = mLContext.Transforms.CopyColumns(outputColumnName: "Label", inputColumnName: "temp")
-                                                .Append(mLContext.Transforms.Concatenate("Features", "year", "lastYearValue"))
-                                                .Append(mLContext.Transforms.Concatenate("Features2", "longitude", "latitude"))
+                                                .Append(mLContext.Transforms.Concatenate("Features", "year", "lastYearValue", "longitude", "latitude"))
                                                 .Append(mLContext.Regression.Trainers.Sdca(maximumNumberOfIterations: 2000));
             Console.WriteLine("1");
             ITransformer model = pipeline.Fit(dataView);
@@ -143,7 +142,7 @@ namespace ki
             }
             //Speichere Modell
             Model modelContainer = TrainTemp(mLContext, temps);
-
+            dB.SaveModel(modelContainer, 0, 77);
             //Verwende Modell um 
 
             return modelContainer;

@@ -13,16 +13,21 @@ namespace ki
     class Model
     {
        public ITransformer trainedModel { get; set; }
-        IEstimator<ITransformer> pipeline { get; set; }
+        public Category category { get; set; }
         public IDataView data { get; set; }
       public  MLContext mLContext { get; set; }
 
-        public Model(ITransformer transformer, IEstimator<ITransformer> pipeline, MLContext mLContext, IDataView data)
+        public Model(ITransformer trainedModel, MLContext mLContext, IDataView data)
         {
-            this.trainedModel = transformer;
-            this.pipeline = pipeline;
+            this.trainedModel = trainedModel;
+     
             this.mLContext = mLContext;
             this.data = data;
+        }
+        public Model(ITransformer transformer, MLContext mLContext)
+        {
+            this.trainedModel = transformer;
+            this.mLContext = mLContext;
         }
     }
 }

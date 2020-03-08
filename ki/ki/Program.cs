@@ -111,6 +111,7 @@ namespace ki
                                         }
                                        
 
+
                                     }
                                     else //falls ungültiger ISO code
                                     {
@@ -192,12 +193,15 @@ namespace ki
         {
             foreach (var LandMitKategorieUndAllenDatenJahren in liste)
             {
-                Printf("<======" + LandMitKategorieUndAllenDatenJahren.Country + "======>");
+                Printf("<======" + LandMitKategorieUndAllenDatenJahren.Country.name + "======>");
 
                 foreach (var KategorieMitJahrenUndWerten in LandMitKategorieUndAllenDatenJahren.ListWithCategoriesWithYearsAndValues)
                 {
 
-                    Printf(KategorieMitJahrenUndWerten.category);
+                    if (KategorieMitJahrenUndWerten.category.name != null)
+                    {
+                        Printf(KategorieMitJahrenUndWerten.category.name);
+                    }  
 
                     foreach (var JahreMitWerten in KategorieMitJahrenUndWerten.YearsWithValues)
                     {

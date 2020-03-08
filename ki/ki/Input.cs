@@ -6,23 +6,42 @@ using System.Threading.Tasks;
 using Microsoft.ML.Data;
 namespace ki
 {
+    /// <summary>
+    /// Original-Wert ist Key
+    /// Normierter Wert ist Value
+    /// </summary>
     class Input
     {
-        public Dictionary<float, float> input = new Dictionary<float, float>();
-       // public Output output;
-        
-        private Dictionary<double, double> jahrMitNormierung = new Dictionary<double, double>();
+      
+        public string name { get; set; }
+        private Dictionary<double, double> jahrMitNormierung = new Dictionary<double, double>(); //Year, normiertes jahr
         private Dictionary<double, double> wertMitNormierung = new Dictionary<double, double>();
         public double step { get; set; }
         public void AddJahr(double jahr, double normiert)
         {
             jahrMitNormierung.Add(jahr, normiert);
         }
+        public void SetYearsWithNorm(Dictionary<double, double> jahrMitNormierung)
+        {
+            this.jahrMitNormierung = jahrMitNormierung;
+        }
+        public void SetValuesWithNorm(Dictionary<double, double> wertMitNormierung)
+        {
+            this.wertMitNormierung = wertMitNormierung;
+        }
+        public Dictionary<double, double> GetYearsDic()
+        {
+            return jahrMitNormierung;
+        }
+        public Dictionary<double, double> GetValuesDic()
+        {
+            return wertMitNormierung;
+        }
         public void AddWert(double wert, double normiert)
         {
             wertMitNormierung.Add(wert, normiert);
         }
-        public double getNormierterWert(double jahr)
+        public double GetNormYear(double jahr)
         {
            return jahrMitNormierung[jahr];
         }

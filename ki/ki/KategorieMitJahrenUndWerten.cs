@@ -8,15 +8,15 @@ namespace ki
 {
     class CategoriesWithYearsAndValues
     {
-        public string category { get; set; } //name der kategorie
+        public Category category { get; set; } //name der kategorie
         public List<YearWithValue> YearsWithValues { get; set; } //Liste mit Jahr + Value
-        public CategoriesWithYearsAndValues(string category, List<YearWithValue> YearsWithValues)
+        public CategoriesWithYearsAndValues(Category category, List<YearWithValue> YearsWithValues)
         {
             this.category = category;
             this.YearsWithValues = YearsWithValues;
             
         }
-        public CategoriesWithYearsAndValues(string category, Task<List<YearWithValue>> YearsWithValuesTask)
+        public CategoriesWithYearsAndValues(Category category, Task<List<YearWithValue>> YearsWithValuesTask)
         {
             this.category = category;
             YearsWithValues = YearsWithValuesTask.Result;

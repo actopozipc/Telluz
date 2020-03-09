@@ -275,7 +275,7 @@ namespace ki
             float[] outputs = CategoriesWithYearsAndValues.GetValuesFromList(KnownValues);
             //Value.CreateBatch(Tensor(Achsen, Dimension), Werte, cpu/gpu)
             float[] outputsnormiert = new float[outputs.Count()];
-            int WertZumDividieren = Convert.ToInt32(outputs.Max());
+            float WertZumDividieren = outputs.Max();
             for (int i = 0; i < outputs.Length; i++)
             {
                 outputsnormiert[i] = outputs[i] / WertZumDividieren;
@@ -324,7 +324,9 @@ namespace ki
                     ParameterStorage ps = new ParameterStorage(float.Parse(w.ToString()), float.Parse(b.ToString()));
                     int coaid = await dB.GetCountryByNameAsync(KnownValues.Where(k => k.Name != null).First().Name);
                     await dB.SaveParameterAsync(ps, coaid, KnownValues.Where(k => k.cat_id != 0).First().cat_id, loss);
+                    Console.WriteLine(KnownValues.Min(k => k.Year));
                     KnownValues = Predict(KnownValues, Convert.ToInt32(KnownValues.Min(k => k.Year)), FutureYear, ps);
+                    
                 }
             }
 

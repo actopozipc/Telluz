@@ -32,7 +32,6 @@ namespace ki
                
             sw.Stop();
             Console.WriteLine("Elapsed={0}", sw.Elapsed);
-            Console.ReadKey();
         
             }
             catch (AggregateException ex)
@@ -75,13 +74,15 @@ namespace ki
                             List<Countrystats> liste = new List<Countrystats>();
                             Response response = new Response();
                             BinaryFormatter bf = new BinaryFormatter();
-                            switch (request.typ)
+                            switch (request.type)
                             {
-                                case type.Daten:
+                                case type.Raw:
                                     liste = await TryConn(request.coa_id, request.cat_id, request.from, request.to);
                                     response = ConvertDataToResponse(liste);
+                                    bf.Serialize(ns, response);
+                                    PrintList(liste);
                                     break;
-                                case type.Bild:
+                                case type.Image:
                                     int coaid;
                                     if (Int32.TryParse(request.key, out int result)) //Falls Land über ID angefragt wird
                                     {
@@ -117,13 +118,26 @@ namespace ki
                                     {
                                         response.errorMessage = "Invalid ISO";
                                     }
-                                   
+                                    bf.Serialize(ns, response);
+                                    PrintList(liste);
+                                    break;
+                                case type.Everything:
+                                    List<Response> responses = new List<Response>();
+                                    List<Countrystats> locallist = new List<Countrystats>(); ;
+                                    for (int i = 0; i < 264; i++)
+                                    {
+                                       
+                                            locallist = await TryConn(i,4, request.from, request.to);
+                                            responses.Add(ConvertDataToResponse(locallist));
+                                           
+                                    }
+                                    bf.Serialize(ns, responses);
+                                    PrintList(locallist);
                                     break;
                                 default:
                                     break;
                             }
-                            bf.Serialize(ns, response);
-                            PrintList(liste);
+                          
                         }
                         
                     }

@@ -29,7 +29,7 @@ namespace ki
         public List<YearWithValue> Predict(List<YearWithValue> yearWithValues, int from, int futureYear, ParameterStorage parStor)
         {
             double j = yearWithValues.Max(k => k.Year);
-            int valueToDiv = Convert.ToInt32(CategoriesWithYearsAndValues.GetValuesFromList(yearWithValues).Max());
+            float valueToDiv = CategoriesWithYearsAndValues.GetValuesFromList(yearWithValues).Max();
             float[] inputs = CategoriesWithYearsAndValues.GetYearsFromList(yearWithValues);
             List<double> listForTheNormalizedInputs = new List<double>();
             foreach (var item in inputs)
@@ -44,7 +44,7 @@ namespace ki
                 while (j < futureYear)
                 {
                     j++;
-                    yearWithValues.Add(new YearWithValue(j, new Wert(Convert.ToDecimal(parStor.W * inputsMax + parStor.b) * valueToDiv)));
+                    yearWithValues.Add(new YearWithValue(j, new Wert((parStor.W * inputsMax + parStor.b) * valueToDiv)));
                     float[] inputtemp = CategoriesWithYearsAndValues.GetYearsFromList(yearWithValues);
                     List<double> fuckinghelpme = new List<double>();
                     foreach (var item in inputtemp)

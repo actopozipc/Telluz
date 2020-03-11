@@ -12,6 +12,7 @@ namespace ki
         public CNTK (DB dB) : base (dB)
         {
             this.dB = dB;
+            dB = new DB();
         }
         public enum Activation
         {

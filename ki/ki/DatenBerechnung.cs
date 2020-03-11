@@ -9,7 +9,7 @@ namespace ki
         const double divident = 10000;
    
         static DB dB = null;
-        CNTK cNTK = new CNTK(dB);
+        static CNTK cNTK = null;
 
         int categorycount;
         public CalculateData()
@@ -17,6 +17,7 @@ namespace ki
             try
             {
                 dB = new DB();
+                cNTK = new CNTK(dB);
             }
             catch (Exception)
             {

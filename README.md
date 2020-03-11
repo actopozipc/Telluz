@@ -17,9 +17,8 @@ Telluz is a project in which forecasts of climate-relevant data are made using a
 ## Known Bugs
 * #1 System Null reference in CNTK.cs when calculating a category from 39 to 45
   * Reproduction: Calculating a category from 39 to 45 new for the first time since program start
-* #2 Wrong result for first predicted year
-  * Reproduction: Not quite sure, probably sometimes when a category from 39 to 45 gets re-calculated 
-* #3 Population-data in output is the same as any other category that gets calculated
-  * Reproduction: Calculate category 45
 * #4 Array out of range when calculating Population for china
-  * Reproduction: title
+  * Reproduction: title  
+  ## Fixed Bugs
+* #2 Wrong result for first predicted year
+* #3 Population-data in output is the same as any other category that gets calculate

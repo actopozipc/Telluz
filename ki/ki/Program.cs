@@ -157,16 +157,21 @@ namespace ki
             try
             {
                 CalculateData calc = new CalculateData();
-                List<Countrystats> liste;
+                List<Countrystats> list;
+                List<Countrystats> list2;
                 if (cat_id > 38 && cat_id < 46)
                 {
-                    liste = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { 4, cat_id }, fromYear, toYear);
+                    //pfusch but it works
+                    list = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { 4 }, fromYear, toYear);
+                    list2 = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { cat_id }, fromYear, toYear);
+
+                    list[0].ListWithCategoriesWithYearsAndValues.Add(list2[0].ListWithCategoriesWithYearsAndValues[0]);
                 }
                 else
                 {
-                    liste = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { cat_id }, fromYear, toYear);
+                    list = await calc.GenerateForEachCountryAsync(new List<int>() { coa_id }, new List<int>() { cat_id }, fromYear, toYear);
                 }
-                return liste;
+                return list;
             }
             catch (Exception ex)
             {

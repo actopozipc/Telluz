@@ -8,6 +8,12 @@ namespace ki
 {
     class AI
     {
+        public static List<YearWithValue> RemoveZero(List<YearWithValue> collection)
+        {
+            var temp = collection.Where(i => i.Value.value != 0).ToList();
+            return temp;
+        }
+
         public DB dB = null;
         public AI(DB dB)
         {

@@ -337,6 +337,7 @@ namespace ki
         {
             int cat_id = 4;
             string name = await dB.GetCountryNameByIDAsync(coaid);
+          population =  RemoveZero(population);
             if (await dB.CheckParametersAsync(coaid, 4))
             {
                 Predict(population, Convert.ToInt32(population.Max(x => x.Year)), futureYear, await dB.GetParameterAsync(coaid, cat_id));

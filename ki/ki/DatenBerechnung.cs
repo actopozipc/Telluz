@@ -73,7 +73,7 @@ namespace ki
                 }
                 //Wenn ein Wert nicht dokumentiert ist, ist in der Datenbank 0 drin. Das verfälscht den Wert für die Ki
                 //entferne deswegen 0
-                SingleCategoryData = RemoveZero(SingleCategoryData);
+                SingleCategoryData = AI.RemoveZero(SingleCategoryData);
                 //Wenn es mindestens ein Jahr einer Kategorie gibt, in der der Wert nicht 0 ist
                 if (SingleCategoryData.Count > 1)
                 {
@@ -116,7 +116,6 @@ namespace ki
                                            yearWithValues = await mL.PredictCo2OverYearsAsync(modelContainer, futureYear, coaid, SingleCategoryData, cNTK);
                                        }
                                        return yearWithValues;
-
                                    }
                                    else //calculate model
                                    {
@@ -149,7 +148,7 @@ namespace ki
                                        {
                                            yearWithValues.Add(new YearWithValue(item.Year, new Wert(Convert.ToDecimal(item.Value.value)), countrystats.Country.name, item.cat_id));
                                        }
-                                       yearWithValues = RemoveZero(yearWithValues);
+                                       yearWithValues = AI.RemoveZero(yearWithValues);
                                        yearWithValues = cNTK.Predict(yearWithValues, from, futureYear, parStor);
                                        return yearWithValues;
 
@@ -203,12 +202,7 @@ namespace ki
 
         }
         //Findet die letzten n höchsten Werte, also zB n= 5 in einem Array mit 10 Zahlen gibt die Zahlen von 5-10 zurück
-        List<YearWithValue> RemoveZero(List<YearWithValue> collection)
-        {
-            var temp = collection.Where(i => i.Value.value != 0).ToList();
-            return temp;
-        }
-
+      
         int Scale(List<YearWithValue> n)
         {
             double temp = Convert.ToDouble(n.Max(i => i.Value.value));

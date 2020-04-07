@@ -83,34 +83,78 @@ namespace ki
                                     PrintList(liste);
                                     break;
                                 case type.Image:
-                                    int coaid;
+                                    List<int> coaids = new List<int>();
+                                    List<Response> responsesLocal = new List<Response>();
                                     if (Int32.TryParse(request.key, out int result)) //Falls Land über ID angefragt wird
                                     {
-                                        coaid = Convert.ToInt32(request.key);
+                                        coaids[0] = Convert.ToInt32(request.key);
                                     }
                                     else //falls Land über ISO code angefragt wird
                                     {
                                         //finde coa id zu ISO code 
                                         DB dB = new DB();
-                                        coaid = await dB.GetCountryByKeyAsync(request.key);
-                                    }
-                                    if (coaid > 0) //falls gültiger Iso Code
-                                    {
-                                        //TryConn bis zum gefragten jahr aufrufen
-                                        liste = await TryConn(coaid, request.cat_id, request.from, request.to);
-                                        //Wert(e) normieren
-                                        //normiertes request.to returnen
-                                    
-                                        response = ConvertDataToResponse(liste);
-                                        if (liste.Any(x=>x.doesContainAnyValues()))
+                                        switch (request.key)
                                         {
-                                            response.colorVal = GetColorValueFromOriginalValue(liste, request.to);
-                                        }
-                                        else
-                                        {
-                                            response.errorMessage = "No values in category";
+                                            case "Asia":
+
+                                                break;
+                                            case "Africa":
+                                                coaids = new List<int>() { 3,15,17,18,22,33,40,41,42,43,45,47,55,59,66,68,71,79,82,84,85,86,87,120 };
+                                                break;
+                                            case "NorthAmerica":
+                                                break;
+
+                                            case "SouthAmerica":
+                                                break;
+
+                                            case "Antarctica":
+
+                                                break;
+
+                                            case "Europe":
+
+                                                break;
+
+                                            case "Australia":
+
+                                                break;
+                                            default:
+                                                coaids[0] = await dB.GetCountryByKeyAsync(request.key);
+                                                break;
                                         }
                                        
+                                    }
+                                    if (AllIdsGrZero(coaids)) //falls gültiger Iso Code
+                                    {
+                                       
+                                        foreach (var item in coaids)
+                                        {
+                                            //TryConn bis zum gefragten jahr aufrufen
+                                            liste = await TryConn(item, request.cat_id, request.from, request.to);
+                                            //Wert(e) normieren
+                                            //normiertes request.to returnen
+
+                                            response = ConvertDataToResponse(liste);
+                                            if (liste.Any(x => x.doesContainAnyValues()))
+                                            {
+                                                try
+                                                {
+
+                                              
+                                                response.colorVal = GetColorValueFromOriginalValue(liste, request.to);
+                                                }
+                                                catch (AggregateException)
+                                                {
+
+                                                    response.errorMessage = "Country has no value in the specific year";
+                                                }
+                                            }
+                                            else
+                                            {
+                                                response.errorMessage = "No values in category";
+                                            }
+                                            responsesLocal.Add(response);
+                                        }
 
 
                                     }
@@ -118,7 +162,7 @@ namespace ki
                                     {
                                         response.errorMessage = "Invalid ISO";
                                     }
-                                    bf.Serialize(ns, response);
+                                    bf.Serialize(ns, responsesLocal);
                                     PrintList(liste);
                                     break;
                                 case type.Everything:
@@ -149,7 +193,7 @@ namespace ki
         private static double GetColorValueFromOriginalValue(List<Countrystats> allValues, int year)
         {
             var max = allValues.Find(y => y == y).ListWithCategoriesWithYearsAndValues.Find(z => z == z).YearsWithValues.Max(a => a.Value.value);
-            float x = 2 * 255 / Convert.ToInt32(max);
+            float x = 2 * 255 / max;
             return Convert.ToInt32(allValues.Find(a => a == a).ListWithCategoriesWithYearsAndValues.Find(b => b == b).YearsWithValues.First(c => c.Year == year).Value.value) * x;
         }
         private static async Task<List<Countrystats>> TryConn(int coa_id, int cat_id, int fromYear, int toYear)
@@ -207,7 +251,18 @@ namespace ki
             response.valuePair = valuePairs;
              return response;
         }
-      
+        //Checks list of ids for invalid values
+      public static bool AllIdsGrZero(List<int> ids)
+        {
+            foreach (var item in ids)
+            {
+                if (item<=0)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
         static void PrintList(List<Countrystats> liste)
         {
             foreach (var LandMitKategorieUndAllenDatenJahren in liste)
@@ -229,6 +284,7 @@ namespace ki
                 }
             }
         }
+        
         static void Printf(string text)
         {
             Console.ForegroundColor = ConsoleColor.DarkYellow;

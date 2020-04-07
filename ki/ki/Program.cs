@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading;
 using System.Threading.Tasks;
 using telluz;
 
@@ -14,34 +15,35 @@ namespace ki
 {
     class Program
     {
-     
+
         static void Main(string[] args)
         {
-            Console.Title = "Telluz"; 
-            Console.WriteLine("Gestartet um " +DateTime.Now);
+            Console.Title = "Telluz";
+            Console.WriteLine("Gestartet um " + DateTime.Now);
             Stopwatch sw = new Stopwatch();
             sw.Start();
             try
             {
-               
+
                 Task.Run(async () =>
                 {
                     await Listen();
 
                 }).Wait();
-               
-            sw.Stop();
-            Console.WriteLine("Elapsed={0}", sw.Elapsed);
-        
+
+                sw.Stop();
+                Console.WriteLine("Elapsed={0}", sw.Elapsed);
+
             }
             catch (AggregateException ex)
             {
-               
-                using (StreamWriter swt = new StreamWriter($"{DateTime.Now.ToString().Replace('.','-').Replace(':','-')}.txt"))
+
+                using (StreamWriter swt = new StreamWriter($"{DateTime.Now.ToString().Replace('.', '-').Replace(':', '-')}.txt"))
                 {
                     swt.Write(ex.Flatten());
                 }
                 Console.WriteLine(ex.Flatten());
+               
             }
 
             Main(args);
@@ -93,14 +95,14 @@ namespace ki
                                     else //falls Land über ISO code angefragt wird
                                     {
                                         //finde coa id zu ISO code 
-                                       
+
                                         switch (request.key)
                                         {
                                             case "Asia":
 
                                                 break;
                                             case "Africa":
-                                                coaids = new List<int>() { 3,15,17,18,22,33,40,41,42,43,45,47,55,59,66,68,71,79,82,84,85,86,87,120 };
+                                                coaids = new List<int>() { 3, 15, 17, 18, 22, 33, 40, 41, 42, 43, 45, 47, 55, 59, 66, 68, 71, 79, 82, 84, 85, 86, 87, 120 };
                                                 break;
                                             case "NorthAmerica":
                                                 break;
@@ -120,14 +122,16 @@ namespace ki
 
                                                 break;
                                             default:
-                                                coaids[0] = await dB.GetCountryByKeyAsync(request.key);
+                                                var coaid = await dB.GetCountryByKeyAsync(request.key);
+                                                coaids.Add(coaid);
+                                                Console.WriteLine(coaids[0]);
                                                 break;
                                         }
-                                       
+
                                     }
                                     if (AllIdsGrZero(coaids)) //falls gültiger Iso Code
                                     {
-                                        if (coaids.Count>1) //Falls es für mehrere Kategorien ist
+                                        if (coaids.Count > 1) //Falls es für mehrere Kategorien ist
                                         {
                                             List<List<Countrystats>> countrystats = new List<List<Countrystats>>();
                                             foreach (var item in coaids)
@@ -145,7 +149,7 @@ namespace ki
                                         else //falls colorvalue nur für eine kategorie ausgerechnet wird
                                         {
                                             //TryConn bis zum gefragten jahr aufrufen
-                                            liste = await TryConn(request.coa_id, request.cat_id, request.from, request.to);
+                                            liste = await TryConn(coaids[0], request.cat_id, request.from, request.to);
                                             //Wert(e) normieren
                                             //normiertes request.to returnen
                                             response = ConvertDataToResponse(liste);
@@ -155,7 +159,7 @@ namespace ki
                                                 {
                                                     response.colorVal = GetColorValueFromOriginalValue(liste, request.to);
                                                 }
-                                                catch (AggregateException)
+                                                catch (InvalidOperationException)
                                                 {
                                                     response.errorMessage = "Country has no value in the specific year";
                                                 }
@@ -166,7 +170,7 @@ namespace ki
                                             }
                                             responsesLocal.Add(response);
                                         }
-                                       
+
 
 
                                     }
@@ -182,10 +186,10 @@ namespace ki
                                     List<Countrystats> locallist = new List<Countrystats>(); ;
                                     for (int i = 0; i < 264; i++)
                                     {
-                                       
-                                            locallist = await TryConn(i,4, request.from, request.to);
-                                            responses.Add(ConvertDataToResponse(locallist));
-                                           
+
+                                        locallist = await TryConn(i, 4, request.from, request.to);
+                                        responses.Add(ConvertDataToResponse(locallist));
+
                                     }
                                     bf.Serialize(ns, responses);
                                     PrintList(locallist);
@@ -193,9 +197,9 @@ namespace ki
                                 default:
                                     break;
                             }
-                          
+
                         }
-                        
+
                     }
                     client.Close();
                 }
@@ -214,39 +218,57 @@ namespace ki
             List<YearWithValue> valuesForYear = new List<YearWithValue>();
             foreach (var valuesForOnecountry in allAllValues)
             {
-                if (valuesForOnecountry.Any(x=>x.ListWithCategoriesWithYearsAndValues.Count>1))
+                if (valuesForOnecountry.Any(x => x.ListWithCategoriesWithYearsAndValues.Count > 1))
                 {
                     Console.WriteLine("sucks");
                 }
                 if (valuesForOnecountry.First().doesContainAnyValues())
                 {
-                    var valueForYear = valuesForOnecountry.Find(y => y == y).ListWithCategoriesWithYearsAndValues.Find(z => z.YearsWithValues.Any(b => b.Year == year)).YearsWithValues.First(a => a.Year == year);
-                    valuesForYear.Add(valueForYear);
-                    //Find max of all values in year
-                    float maxValue = valuesForYear.Where(x => x == x).Max(y => y.Value.value);
-                    //Berechne color-Value für alles und weise es den korrekten responses zu
-                    //calc color-value
-                    float m = 2 * 255 / maxValue;
-                    foreach (var item in valuesForYear)
-                    {
-                        try
-                        {
 
-                        var temp = responses.First(x => x.valuePairList.Any(y => y.value == item.Value.value)); //Get first value-year list where any value is the same as one of the values in the list with values for year
-                        temp.colorVal = m * temp.valuePairList.First(x => x.year == year).value;
-                        }
-                        catch (InvalidOperationException)
+                    Countrystats country = valuesForOnecountry.First();
+                    CategoriesWithYearsAndValues categoriesWithYearsAndValues = country.ListWithCategoriesWithYearsAndValues.Find(z => z.YearsWithValues.Any(b => b.Year == year));
+                    if (categoriesWithYearsAndValues != null)
+                    {
+
+
+                        var yearWithValues = categoriesWithYearsAndValues.YearsWithValues;
+                        var valueForYear = yearWithValues.Find(x => x.Year == year);
+                        //  var valueForYear = valuesForOnecountry.First(y => y == y).ListWithCategoriesWithYearsAndValues.Find(z => z.YearsWithValues.Any(b => b.Year == year)).YearsWithValues.First(a => a.Year == year);
+                        valuesForYear.Add(valueForYear);
+                        //Find max of all values in year
+                        float maxValue = valuesForYear.Where(x => x == x).Max(y => y.Value.value);
+                        //Berechne color-Value für alles und weise es den korrekten responses zu
+                        //calc color-value
+                        float m = 2 * 255 / maxValue;
+                        foreach (var item in valuesForYear)
                         {
-                            Console.WriteLine("Meier, kann nicht besser nach Kategorien filtern wo keine Werte drin sind");
-                        
+                            try
+                            {
+
+                                int index = responses.FindIndex(x => x.valuePairList.Any(y => y.value == item.Value.value)); //Get first value-year list where any value is the same as one of the values in the list with values for year
+                                var temp = responses[index];                                  
+                                 temp.colorVal = m * temp.valuePairList.First(x => x.year == year).value;
+                                if (temp.colorVal<0)
+                                {
+                                    temp.errorMessage = "colorValue below 0, ich fix es später";
+                                    temp.colorVal = 1;
+                                }
+                                responses[index] = temp;
+                            }
+                            catch (InvalidOperationException)
+                            {
+                                Console.WriteLine("Meier, kann nicht besser nach Kategorien filtern wo keine Werte drin sind");
+
+                            }
+
                         }
 
                     }
                 }
-                
+
             }
-          
-            var countriesWithNoValuesInYear = responses.Where(x => x.colorVal == -0).ToArray();
+
+            var countriesWithNoValuesInYear = responses.Where(x => x.colorVal == 0).ToArray();
             for (int i = 0; i < countriesWithNoValuesInYear.Count(); i++)
             {
                 countriesWithNoValuesInYear[i].errorMessage = "Country has no value in the specific year";
@@ -285,7 +307,7 @@ namespace ki
             Response response = new Response();
             List<Response.ValuePair> valuePairs = new List<Response.ValuePair>();
             List<Response> listWithResponse = new List<Response>();
-            if (list.Any(x=>x.ListWithCategoriesWithYearsAndValues.Any(y=>y.YearsWithValues.Count>0)))
+            if (list.Any(x => x.ListWithCategoriesWithYearsAndValues.Any(y => y.YearsWithValues.Count > 0)))
             {
                 foreach (var kategorieMitJahrenWerten in list)
                 {
@@ -294,7 +316,7 @@ namespace ki
                         foreach (var jahreMitWerten in kategorieMitJahrenWerten.ListWithCategoriesWithYearsAndValues[i].YearsWithValues)
                         {
                             valuePairs.Add(new Response.ValuePair(jahreMitWerten.Value.berechnet, jahreMitWerten.Year, jahreMitWerten.Value.value));
-                       
+
                         }
                     }
 
@@ -305,14 +327,14 @@ namespace ki
                 listWithResponse.Add(new Response());
             }
             response.valuePairList = valuePairs;
-             return response;
+            return response;
         }
         //Checks list of ids for invalid values
-      public static bool AllIdsGrZero(List<int> ids)
+        public static bool AllIdsGrZero(List<int> ids)
         {
             foreach (var item in ids)
             {
-                if (item<=0)
+                if (item <= 0)
                 {
                     return false;
                 }
@@ -331,7 +353,7 @@ namespace ki
                     if (KategorieMitJahrenUndWerten.category.name != null)
                     {
                         Printf(KategorieMitJahrenUndWerten.category.name);
-                    }  
+                    }
 
                     foreach (var JahreMitWerten in KategorieMitJahrenUndWerten.YearsWithValues)
                     {
@@ -340,13 +362,13 @@ namespace ki
                 }
             }
         }
-        
+
         static void Printf(string text)
         {
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine(text);
             Console.ForegroundColor = ConsoleColor.White;
         }
-       
+
     }
 }
